@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Resource — Tacoma Creek Fire</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav>
+  <img src="image1.png" class="nav-logo" alt="Great Basin IMT7">
+  <a class="nav-brand" href="index.html">
+    Great Basin IMT7
+    <span class="brand-sub">Medical Group IMS</span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html">Dashboard</a>
+    <a href="roster.html">Roster</a>
+    <a href="tracking.html">Tracking Chart</a>
+    <a href="add-resource.html" class="active">Add Resource</a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <h1 id="page-title">Add <span>Resource</span></h1>
+  <p id="page-sub">Fill out all applicable fields. Required fields are marked with *.</p>
+</div>
+
+<main>
+  <div class="form-outer">
+  <div class="form-wrap">
+    <form id="resource-form" onsubmit="handleSubmit(event)">
+
+      <!-- Identity -->
+      <div class="form-section-title">Resource Identity</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Resource Order Number *</label>
+          <input type="text" id="orderNumber" placeholder="e.g. O-4800" required>
+        </div>
+        <div class="form-group">
+          <label>Timestamp</label>
+          <input type="datetime-local" id="timestamp">
+        </div>
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="name" placeholder="First Last" required>
+        </div>
+        <div class="form-group">
+          <label>Contact Number</label>
+          <input type="tel" id="phone" placeholder="800-000-0000">
+        </div>
+        <div class="form-group col-span-2">
+          <label>Contact Email</label>
+          <input type="email" id="email" placeholder="name@agency.org">
+        </div>
+      </div>
+
+      <!-- Resource classification -->
+      <div class="form-section-title">Resource Classification</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Resource Identification *</label>
+          <input type="text" id="resourceIdentification" placeholder="e.g. Ambo 3, Rems 1" required>
+        </div>
+        <div class="form-group">
+          <label>Resource Type *</label>
+          <select id="resourceType" required>
+            <option value="">— Select —</option>
+            <option>Ambo</option>
+            <option>Med Mod</option>
+            <option>Rems</option>
+            <option>Medic</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Contract Type</label>
+          <select id="contractType">
+            <option value="">— Select —</option>
+            <option>Contractor</option>
+            <option>Cooperator</option>
+            <option>Federal</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Division Assignment</label>
+          <select id="division">
+            <option value="">(Unassigned)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>New Division Name (optional)</label>
+          <input type="text" id="newDivision" placeholder="Create a new division…">
+        </div>
+        <div class="form-group" style="align-self:end">
+          <button type="button" class="btn btn-secondary" onclick="createDivision()">+ Create Division</button>
+        </div>
+      </div>
+
+      <!-- Agency -->
+      <div class="form-section-title">Agency / Department</div>
+      <div class="form-grid">
+        <div class="form-group col-span-2">
+          <label>Department or Agency Name *</label>
+          <input type="text" id="agency" placeholder="e.g. Mountain Medics" required>
+        </div>
+        <div class="form-group">
+          <label>Department Identifier / Company Name</label>
+          <input type="text" id="deptIdentifier" placeholder="e.g. CA-MTN">
+        </div>
+        <div class="form-group">
+          <label>Home Address of Agency</label>
+          <input type="text" id="homeAddress" placeholder="Street, City, State">
+        </div>
+      </div>
+
+      <!-- Supervisor -->
+      <div class="form-section-title">Supervisor Contact</div>
+      <div class="form-grid cols-3">
+        <div class="form-group">
+          <label>Supervisor Name</label>
+          <input type="text" id="supervisorName">
+        </div>
+        <div class="form-group">
+          <label>Supervisor Phone</label>
+          <input type="tel" id="supervisorPhone" placeholder="800-000-0000">
+        </div>
+        <div class="form-group">
+          <label>Supervisor Email</label>
+          <input type="email" id="supervisorEmail">
+        </div>
+      </div>
+
+      <!-- Assignment dates -->
+      <div class="form-section-title">Assignment Dates</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>First Day Assigned to Incident</label>
+          <input type="date" id="firstDayAssigned">
+        </div>
+        <div class="form-group">
+          <label>First Working Day *</label>
+          <input type="date" id="firstWorkingDay" required onchange="updateLWD()">
+        </div>
+        <div class="form-group">
+          <label>Length of Assignment *</label>
+          <select id="lengthOfAssignment" required onchange="updateLWD()">
+            <option value="14">14 days</option>
+            <option value="21">21 days</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Available for Extension</label>
+          <select id="availableExtension">
+            <option value="Y">Yes</option>
+            <option value="N">No</option>
+          </select>
+        </div>
+        <div class="form-group col-span-2">
+          <label>Calculated Last Working Day</label>
+          <input type="text" id="calcLWD" readonly style="opacity:.7;cursor:default" placeholder="Auto-calculated">
+        </div>
+      </div>
+
+      <!-- Vehicle -->
+      <div class="form-section-title">Vehicle Information</div>
+      <div class="form-grid">
+        <div class="form-group col-span-2">
+          <label>Vehicle Info</label>
+          <input type="text" id="vehicleInfo" placeholder="e.g. 2021 Ford F-150">
+        </div>
+        <div class="form-group">
+          <label>Four Wheel Drive</label>
+          <select id="fourWheelDrive">
+            <option value="">Unknown</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Licensure -->
+      <div class="form-section-title">Licensure &amp; Certifications</div>
+      <div class="form-grid cols-3">
+        <div class="form-group">
+          <label>State Licensure / Accreditation</label>
+          <input type="text" id="stateLicensure" placeholder="e.g. EMT, RN, PM">
+        </div>
+        <div class="form-group">
+          <label>Licensure Number</label>
+          <input type="text" id="licensureNumber" placeholder="e.g. EMT-CA-88321">
+        </div>
+        <div class="form-group">
+          <label>Licensure Expiration</label>
+          <input type="date" id="licensureExpiration">
+        </div>
+        <div class="form-group">
+          <label>Driver's License</label>
+          <input type="text" id="driversLicense" placeholder="e.g. CA D9230012">
+        </div>
+        <div class="form-group col-span-2">
+          <label>Certifications / Licensure</label>
+          <input type="text" id="certifications" placeholder="e.g. CA EMT Card, Fed PM Card">
+        </div>
+      </div>
+
+      <!-- Contract -->
+      <div class="form-section-title">Contract / Order</div>
+      <div class="form-grid cols-3">
+        <div class="form-group">
+          <label>Red Card Agreement</label>
+          <select id="redCard">
+            <option value="">—</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Agreement / Contract Order</label>
+          <input type="text" id="orderIdentifier" placeholder="e.g. AGR-2215">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="submit-btn">Add to Roster</button>
+        <button type="button" class="btn btn-secondary" onclick="resetForm()">Clear Form</button>
+        <a href="roster.html" class="btn btn-secondary">← Back to Roster</a>
+        <span id="form-status" style="align-self:center;font-size:.85rem;color:var(--text-muted)"></span>
+      </div>
+    </form>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const editOrder = params.get("edit");
+const presetDiv = params.get("div") || "";
+let isEditing = false;
+
+function populateDivisionSelect(selectedDiv) {
+  const sel = document.getElementById("division");
+  sel.innerHTML = `<option value="">(Unassigned)</option>`;
+  loadDivisions().forEach(d => {
+    sel.insertAdjacentHTML("beforeend",
+      `<option value="${d}" ${d === selectedDiv ? "selected" : ""}>${d}</option>`);
+  });
+}
+
+function createDivision() {
+  const inp = document.getElementById("newDivision");
+  const name = inp.value.trim();
+  if (!name) { showToast("Enter a division name first.", true); return; }
+  const divs = loadDivisions();
+  if (!divs.includes(name)) { divs.push(name); saveDivisions(divs); }
+  populateDivisionSelect(name);
+  inp.value = "";
+  showToast(`Division "${name}" created.`);
+}
+
+function updateLWD() {
+  const fwd = document.getElementById("firstWorkingDay").value;
+  const len = parseInt(document.getElementById("lengthOfAssignment").value) || 14;
+  if (!fwd) { document.getElementById("calcLWD").value = ""; return; }
+  const d = new Date(fwd + "T00:00:00");
+  d.setDate(d.getDate() + len - 1);
+  document.getElementById("calcLWD").value = fmtDate(d);
+}
+
+function getFormData() {
+  const ts = document.getElementById("timestamp").value;
+  return {
+    orderNumber:          document.getElementById("orderNumber").value.trim(),
+    timestamp:            ts ? ts.replace("T"," ").slice(0,16) : new Date().toISOString().slice(0,10),
+    name:                 document.getElementById("name").value.trim(),
+    phone:                document.getElementById("phone").value.trim(),
+    email:                document.getElementById("email").value.trim(),
+    contractType:         document.getElementById("contractType").value,
+    agency:               document.getElementById("agency").value.trim(),
+    deptIdentifier:       document.getElementById("deptIdentifier").value.trim(),
+    homeAddress:          document.getElementById("homeAddress").value.trim(),
+    supervisorName:       document.getElementById("supervisorName").value.trim(),
+    supervisorPhone:      document.getElementById("supervisorPhone").value.trim(),
+    supervisorEmail:      document.getElementById("supervisorEmail").value.trim(),
+    firstDayAssigned:     document.getElementById("firstDayAssigned").value,
+    firstWorkingDay:      document.getElementById("firstWorkingDay").value,
+    availableExtension:   document.getElementById("availableExtension").value,
+    vehicleInfo:          document.getElementById("vehicleInfo").value.trim(),
+    fourWheelDrive:       document.getElementById("fourWheelDrive").value,
+    stateLicensure:       document.getElementById("stateLicensure").value.trim(),
+    licensureNumber:      document.getElementById("licensureNumber").value.trim(),
+    licensureExpiration:  document.getElementById("licensureExpiration").value,
+    driversLicense:       document.getElementById("driversLicense").value.trim(),
+    certifications:       document.getElementById("certifications").value.trim(),
+    redCard:              document.getElementById("redCard").value,
+    orderIdentifier:      document.getElementById("orderIdentifier").value.trim(),
+    resourceIdentification: document.getElementById("resourceIdentification").value.trim(),
+    resourceType:         document.getElementById("resourceType").value,
+    division:             document.getElementById("division").value,
+    lengthOfAssignment:   parseInt(document.getElementById("lengthOfAssignment").value) || 14,
+  };
+}
+
+function fillForm(r) {
+  const fields = ["orderNumber","name","phone","email","contractType","agency","deptIdentifier",
+    "homeAddress","supervisorName","supervisorPhone","supervisorEmail","firstDayAssigned",
+    "firstWorkingDay","availableExtension","vehicleInfo","fourWheelDrive","stateLicensure",
+    "licensureNumber","licensureExpiration","driversLicense","certifications","redCard",
+    "orderIdentifier","resourceIdentification","resourceType"];
+  fields.forEach(f => {
+    const el = document.getElementById(f);
+    if (el) el.value = r[f] || "";
+  });
+  document.getElementById("lengthOfAssignment").value = r.lengthOfAssignment || 14;
+  populateDivisionSelect(r.division || "");
+  if (r.timestamp) {
+    document.getElementById("timestamp").value = r.timestamp.replace(" ","T");
+  }
+  updateLWD();
+}
+
+function handleSubmit(e) {
+  e.preventDefault();
+  const data = getFormData();
+
+  if (!data.orderNumber) { showToast("Order Number is required.", true); return; }
+  if (!data.name)         { showToast("Name is required.", true); return; }
+
+  const resources = loadResources();
+
+  if (isEditing) {
+    const idx = resources.findIndex(r => r.orderNumber === editOrder);
+    if (idx === -1) { showToast("Resource not found.", true); return; }
+    resources[idx] = { ...resources[idx], ...data };
+    saveResources(resources);
+    showToast("Resource updated successfully.");
+    setTimeout(() => location.href = "roster.html", 1200);
+  } else {
+    if (resources.find(r => r.orderNumber === data.orderNumber)) {
+      showToast(`Order number ${data.orderNumber} already exists. Use a unique number.`, true);
+      return;
+    }
+    resources.push(data);
+    saveResources(resources);
+    showToast("Resource added to roster!");
+    document.getElementById("form-status").textContent = `✓ ${data.name} added.`;
+    setTimeout(() => {
+      resetForm();
+      document.getElementById("form-status").textContent = "";
+    }, 2000);
+  }
+}
+
+function resetForm() {
+  document.getElementById("resource-form").reset();
+  populateDivisionSelect(presetDiv);
+  document.getElementById("calcLWD").value = "";
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "show" + (isError ? " error" : "");
+  setTimeout(() => t.className = "", 3500);
+}
+
+// Init
+populateDivisionSelect(presetDiv);
+
+if (editOrder) {
+  const resource = loadResources().find(r => r.orderNumber === editOrder);
+  if (resource) {
+    isEditing = true;
+    document.getElementById("page-title").innerHTML = `Edit <span>Resource</span>`;
+    document.getElementById("page-sub").textContent   = `Editing: ${resource.name} (${editOrder})`;
+    document.getElementById("submit-btn").textContent  = "Save Changes";
+    document.getElementById("orderNumber").readOnly    = true;
+    document.getElementById("orderNumber").style.opacity = ".6";
+    fillForm(resource);
+  } else {
+    showToast(`Resource ${editOrder} not found.`, true);
+  }
+} else {
+  // Default first working day to today
+  document.getElementById("firstWorkingDay").value = new Date().toISOString().slice(0,10);
+  updateLWD();
+}
+</script>
+</body>
+</html>
+

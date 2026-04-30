@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracking Chart — Tacoma Creek Fire</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .cell-fwd     { background: #1a6fba !important; color:#fff; font-weight:700; text-align:center; font-size:.7rem; }
+  .cell-lwd     { background: #c00 !important;    color:#fff; font-weight:700; text-align:center; font-size:.7rem; }
+  .cell-active  { text-align:center; font-size:.7rem; }
+  .cell-tvl     { background: #5a4000 !important; color:#ffd; text-align:center; font-size:.7rem; }
+
+  .cell-ambo    { background: rgba(232,119,34,.35) !important; }
+  .cell-medmod  { background: rgba(26,111,186,.35) !important; }
+  .cell-rems    { background: rgba(42,157,78,.35) !important; }
+  .cell-medic   { background: rgba(155,48,196,.35) !important; }
+
+  .today-col    { background: rgba(232,119,34,.08) !important; }
+  .today-col.cell-ambo   { background: rgba(232,119,34,.5) !important; }
+  .today-col.cell-medmod { background: rgba(26,111,186,.5) !important; }
+  .today-col.cell-rems   { background: rgba(42,157,78,.5) !important; }
+  .today-col.cell-medic  { background: rgba(155,48,196,.5) !important; }
+
+  .tracking-table th.today-header { color: var(--orange); border-bottom: 2px solid var(--orange); }
+
+  .legend { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1rem; font-size:.8rem; align-items:center; }
+  .legend-item { display:flex; align-items:center; gap:.35rem; }
+  .legend-swatch { width:18px; height:14px; border-radius:3px; }
+
+  .div-rename-btn { background:none; border:none; color:var(--text-muted); cursor:pointer;
+                    font-size:.8rem; margin-left:.5rem; }
+  .div-rename-btn:hover { color:var(--orange); }
+
+  .date-range-controls { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; margin-bottom:1rem; }
+  .date-range-controls label { font-size:.85rem; color:var(--text-muted); }
+  .date-range-controls input[type=date] {
+    background:var(--input-bg); border:1px solid var(--border); color:var(--text);
+    border-radius:var(--radius); padding:.4rem .65rem; font-size:.85rem;
+  }
+  .date-range-controls input:focus { outline:none; border-color:var(--orange); }
+</style>
+</head>
+<body>
+
+<nav>
+  <img src="image1.png" class="nav-logo" alt="Great Basin IMT7">
+  <a class="nav-brand" href="index.html">
+    Great Basin IMT7
+    <span class="brand-sub">Medical Group IMS</span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html">Dashboard</a>
+    <a href="roster.html">Roster</a>
+    <a href="tracking.html" class="active">Tracking Chart</a>
+    <a href="add-resource.html">Add Resource</a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <h1>Resource <span>Tracking Chart</span></h1>
+  <p>Calendar grid organized by Division. FWD = First Working Day · LWD = Last Working Day · Color = Resource type</p>
+</div>
+
+<main>
+  <!-- Division Manager -->
+  <div class="div-manager">
+    <span class="div-manager-label">Divisions:</span>
+    <div class="div-pills" id="div-pills"></div>
+    <div class="div-add-form">
+      <input type="text" id="new-div-input" placeholder="New division…" maxlength="40">
+      <button class="btn btn-primary btn-sm" onclick="addDivision()">+ Add</button>
+    </div>
+  </div>
+
+  <!-- Date range -->
+  <div class="date-range-controls">
+    <label>Chart from:</label>
+    <input type="date" id="start-date" onchange="renderChart()">
+    <label>to:</label>
+    <input type="date" id="end-date" onchange="renderChart()">
+    <button class="btn btn-secondary btn-sm" onclick="resetDates()">Reset to 30 days</button>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <strong style="font-size:.8rem;color:var(--text-muted)">Legend:</strong>
+    <div class="legend-item"><div class="legend-swatch" style="background:#1a6fba"></div>FWD (start)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#c00"></div>LWD (end)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(232,119,34,.5)"></div>Ambo active</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(26,111,186,.5)"></div>Med Mod active</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(42,157,78,.5)"></div>Rems active</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(155,48,196,.5)"></div>Medic active</div>
+    <div class="legend-item" style="margin-left:auto;font-size:.78rem;color:var(--orange)">
+      ★ Today highlighted
+    </div>
+  </div>
+
+  <div class="tracking-wrap">
+    <div id="chart-container"></div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+function getDateRange() {
+  const s = document.getElementById("start-date").value;
+  const e = document.getElementById("end-date").value;
+  if (!s || !e) return null;
+  return { start: new Date(s + "T00:00:00"), end: new Date(e + "T00:00:00") };
+}
+
+function resetDates() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const end = new Date(today); end.setDate(end.getDate() + 29);
+  document.getElementById("start-date").value = toISO(today);
+  document.getElementById("end-date").value   = toISO(end);
+  renderChart();
+}
+
+function toISO(d) {
+  return d.toISOString().slice(0,10);
+}
+
+function buildDateColumns(start, end) {
+  const cols = [];
+  const cur = new Date(start);
+  while (cur <= end) {
+    cols.push(new Date(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return cols;
+}
+
+function renderDivPills() {
+  const divisions = loadDivisions();
+  const pills = document.getElementById("div-pills");
+  pills.innerHTML = "";
+  divisions.forEach(d => {
+    pills.insertAdjacentHTML("beforeend", `
+      <span class="div-pill">
+        <span id="div-label-${CSS.escape(d)}">${d}</span>
+        <button onclick="renameDivision('${d}')" title="Rename">✎</button>
+        <button onclick="deleteDivision('${d}')" title="Delete">×</button>
+      </span>`);
+  });
+}
+
+function addDivision() {
+  const inp = document.getElementById("new-div-input");
+  const name = inp.value.trim();
+  if (!name) return;
+  const divs = loadDivisions();
+  if (divs.includes(name)) { showToast("Division already exists.", true); return; }
+  divs.push(name);
+  saveDivisions(divs);
+  inp.value = "";
+  renderDivPills();
+  renderChart();
+  showToast(`Division "${name}" added.`);
+}
+
+function deleteDivision(name) {
+  if (!confirm(`Delete division "${name}"? Resources assigned to it will become Unassigned.`)) return;
+  let divs = loadDivisions().filter(d => d !== name);
+  saveDivisions(divs);
+  // Unassign resources
+  const resources = loadResources();
+  resources.forEach(r => { if (r.division === name) r.division = ""; });
+  saveResources(resources);
+  renderDivPills();
+  renderChart();
+  showToast(`Division "${name}" deleted.`);
+}
+
+function renameDivision(oldName) {
+  const newName = prompt(`Rename division "${oldName}" to:`, oldName);
+  if (!newName || newName.trim() === oldName) return;
+  const n = newName.trim();
+  const divs = loadDivisions();
+  const idx = divs.indexOf(oldName);
+  if (idx === -1) return;
+  divs[idx] = n;
+  saveDivisions(divs);
+  // Update all resources
+  const resources = loadResources();
+  resources.forEach(r => { if (r.division === oldName) r.division = n; });
+  saveResources(resources);
+  renderDivPills();
+  renderChart();
+  showToast(`Division renamed to "${n}".`);
+}
+
+function typeClass(type) {
+  switch ((type||"").trim()) {
+    case "Ambo":    return "cell-ambo";
+    case "Med Mod": return "cell-medmod";
+    case "Rems":    return "cell-rems";
+    case "Medic":   return "cell-medic";
+    default: return "";
+  }
+}
+
+function renderChart() {
+  const range = getDateRange();
+  if (!range) return;
+  const { start, end } = range;
+  const cols = buildDateColumns(start, end);
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const resources  = loadResources();
+  const divisions  = loadDivisions();
+  const allDivKeys = ["(Unassigned)", ...divisions];
+
+  // Group resources by division
+  const byDiv = {};
+  allDivKeys.forEach(d => byDiv[d] = []);
+  resources.forEach(r => {
+    const d = r.division || "(Unassigned)";
+    if (!byDiv[d]) byDiv[d] = [];
+    byDiv[d].push(r);
+  });
+
+  // Build HTML
+  let html = `<table class="tracking-table">
+    <thead>
+      <tr>
+        <th class="col-meta" style="min-width:130px">Name</th>
+        <th class="col-meta" style="min-width:80px">ID</th>
+        <th class="col-meta" style="min-width:70px">Type</th>
+        <th class="col-meta" style="min-width:50px">Len</th>
+        <th class="col-meta" style="min-width:50px">Ext?</th>`;
+
+  cols.forEach(d => {
+    const isToday = d.getTime() === today.getTime();
+    const cls = isToday ? " today-header" : "";
+    html += `<th class="col-date${cls}">${d.getDate()}<br><span style="font-weight:400">${DAYS[d.getDay()]}</span></th>`;
+  });
+
+  html += `</tr></thead><tbody>`;
+
+  allDivKeys.forEach(divName => {
+    const group = byDiv[divName] || [];
+
+    // Division header row
+    html += `<tr class="div-header-row">
+      <td colspan="${5 + cols.length}">
+        ◆ Division: ${divName}
+        <a href="add-resource.html?div=${encodeURIComponent(divName)}"
+           style="margin-left:1rem;font-size:.75rem;color:var(--orange);text-decoration:none;font-weight:400">
+          + Add resource to this division
+        </a>
+      </td>
+    </tr>`;
+
+    if (group.length === 0) {
+      html += `<tr><td colspan="${5 + cols.length}" style="color:var(--text-muted);font-size:.8rem;padding:.5rem 1rem;font-style:italic">
+        No resources assigned to this division.
+      </td></tr>`;
+    } else {
+      group.sort((a,b) => a.name.localeCompare(b.name)).forEach(r => {
+        const fwd = r.firstWorkingDay ? new Date(r.firstWorkingDay + "T00:00:00") : null;
+        const lwd = lastWorkingDay(r);
+        const tc  = typeClass(r.resourceType);
+        const ext = (r.availableExtension||"").toUpperCase().startsWith("Y") ? "✓" : "✗";
+
+        html += `<tr>
+          <td class="resource-name-cell">
+            <a href="roster.html?edit=${r.orderNumber}" style="color:var(--text);text-decoration:none">${r.name}</a>
+          </td>
+          <td class="resource-id-cell">${r.resourceIdentification||"—"}</td>
+          <td>${typeBadge(r.resourceType)}</td>
+          <td style="color:var(--text-muted);text-align:center">${r.lengthOfAssignment}d</td>
+          <td style="text-align:center">${ext}</td>`;
+
+        cols.forEach(d => {
+          const isToday = d.getTime() === today.getTime();
+          const todayCls = isToday ? " today-col" : "";
+          if (!fwd || !lwd) {
+            html += `<td class="${todayCls}"></td>`;
+          } else if (d.getTime() === fwd.getTime()) {
+            html += `<td class="cell-fwd${todayCls}" title="First Working Day">FWD</td>`;
+          } else if (d.getTime() === lwd.getTime()) {
+            html += `<td class="cell-lwd${todayCls}" title="Last Working Day">LWD</td>`;
+          } else if (d > fwd && d < lwd) {
+            const dayNum = Math.round((d - fwd) / 86400000) + 1;
+            html += `<td class="${tc}${todayCls}" title="Day ${dayNum}">${dayNum}</td>`;
+          } else {
+            html += `<td class="${todayCls}"></td>`;
+          }
+        });
+
+        html += `</tr>`;
+      });
+    }
+  });
+
+  html += `</tbody></table>`;
+  document.getElementById("chart-container").innerHTML = html;
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "show" + (isError ? " error" : "");
+  setTimeout(() => t.className = "", 3000);
+}
+
+// Init
+renderDivPills();
+resetDates();
+</script>
+</body>
+</html>

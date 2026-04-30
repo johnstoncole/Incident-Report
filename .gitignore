@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+
+# Editor / OS
+Thumbs.db
+*.swp
+*~
+
+# Claude Code workspace files (kept out of the published site)
+.claude/

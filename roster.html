@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resource Roster — Tacoma Creek Fire</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav>
+  <img src="image1.png" class="nav-logo" alt="Great Basin IMT7">
+  <a class="nav-brand" href="index.html">
+    Great Basin IMT7
+    <span class="brand-sub">Medical Group IMS</span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html">Dashboard</a>
+    <a href="roster.html" class="active">Roster</a>
+    <a href="tracking.html">Tracking Chart</a>
+    <a href="add-resource.html">Add Resource</a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <h1>Resource <span>Roster</span></h1>
+  <p id="roster-count">Loading…</p>
+</div>
+
+<main>
+
+  <div class="controls">
+    <input type="text" id="search" placeholder="Search name, order #, agency…" oninput="render()">
+    <select id="filter-type" onchange="render()">
+      <option value="">All Types</option>
+      <option>Ambo</option>
+      <option>Med Mod</option>
+      <option>Rems</option>
+      <option>Medic</option>
+    </select>
+    <select id="filter-agency" onchange="render()">
+      <option value="">All Agencies</option>
+    </select>
+    <select id="filter-div" onchange="render()">
+      <option value="">All Divisions</option>
+    </select>
+    <select id="filter-ext" onchange="render()">
+      <option value="">Any Extension</option>
+      <option value="yes">Extension: Yes</option>
+      <option value="no">Extension: No</option>
+    </select>
+    <a href="add-resource.html" class="btn btn-primary" style="margin-left:auto">+ Add Resource</a>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table" id="roster-table">
+      <thead>
+        <tr>
+          <th>Order #</th>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Email</th>
+          <th>Type</th>
+          <th>Resource ID</th>
+          <th>Agency</th>
+          <th>Division</th>
+          <th>First Working Day</th>
+          <th>Last Working Day</th>
+          <th>Days Left</th>
+          <th>Extension</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="roster-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" id="empty-state" style="display:none">
+    <div class="icon">🔍</div>
+    <p>No resources match your filters.</p>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+let editingOrder = null;
+
+function populateFilters() {
+  const resources = loadResources();
+  const agencies = [...new Set(resources.map(r => r.agency).filter(Boolean))].sort();
+  const divisions = loadDivisions();
+
+  const agSel = document.getElementById("filter-agency");
+  agencies.forEach(a => agSel.insertAdjacentHTML("beforeend", `<option>${a}</option>`));
+
+  const divSel = document.getElementById("filter-div");
+  ["(Unassigned)", ...divisions].forEach(d =>
+    divSel.insertAdjacentHTML("beforeend", `<option value="${d}">${d}</option>`));
+}
+
+function getFiltered() {
+  const resources = loadResources();
+  const q    = normalize(document.getElementById("search").value);
+  const type = document.getElementById("filter-type").value;
+  const ag   = document.getElementById("filter-agency").value;
+  const div  = document.getElementById("filter-div").value;
+  const ext  = document.getElementById("filter-ext").value;
+
+  return resources.filter(r => {
+    if (type && r.resourceType !== type) return false;
+    if (ag && r.agency !== ag) return false;
+    if (div) {
+      const rd = r.division || "(Unassigned)";
+      if (rd !== div) return false;
+    }
+    if (ext === "yes" && !(r.availableExtension||"").toUpperCase().startsWith("Y")) return false;
+    if (ext === "no"  &&  (r.availableExtension||"").toUpperCase().startsWith("Y")) return false;
+    if (q) {
+      const haystack = normalize(r.name + r.orderNumber + r.agency + r.resourceIdentification + r.division + r.email + r.phone);
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function render() {
+  const filtered = getFiltered();
+  const tbody = document.getElementById("roster-tbody");
+  tbody.innerHTML = "";
+  document.getElementById("empty-state").style.display = filtered.length ? "none" : "";
+  document.getElementById("roster-count").textContent =
+    `${filtered.length} of ${loadResources().length} resources`;
+
+  filtered.sort((a,b) => a.name.localeCompare(b.name)).forEach(r => {
+    if (editingOrder === r.orderNumber) {
+      tbody.insertAdjacentHTML("beforeend", buildEditRow(r));
+    } else {
+      tbody.insertAdjacentHTML("beforeend", buildRow(r));
+    }
+  });
+}
+
+function buildRow(r) {
+  const dl = daysLeft(r);
+  const lwd = lastWorkingDay(r);
+  const badgeClass = dl === null ? "ok" : dl < 0 ? "expired" : dl <= 1 ? "critical" : dl <= 3 ? "warning" : "ok";
+  const dlText = dl === null ? "—" : dl < 0 ? `${Math.abs(dl)}d ago` : dl === 0 ? "Today" : `${dl}d`;
+  const ext = (r.availableExtension||"").toUpperCase().startsWith("Y") ? "✓ Yes" : "✗ No";
+  return `<tr data-order="${r.orderNumber}">
+    <td><code style="color:var(--text-muted);font-size:.78rem">${r.orderNumber}</code></td>
+    <td><strong>${r.name}</strong></td>
+    <td><a href="tel:${r.phone}" style="color:var(--text-muted);font-size:.82rem">${r.phone}</a></td>
+    <td><a href="mailto:${r.email}" style="color:var(--orange);font-size:.82rem">${r.email||"—"}</a></td>
+    <td>${typeBadge(r.resourceType)}</td>
+    <td style="color:var(--text-muted);font-size:.82rem">${r.resourceIdentification||"—"}</td>
+    <td>${r.agency}</td>
+    <td>${r.division||"—"}</td>
+    <td>${r.firstWorkingDay ? fmtDate(new Date(r.firstWorkingDay+"T00:00:00")) : "—"}</td>
+    <td>${lwd ? fmtDate(lwd) : "—"}</td>
+    <td><span class="days-badge ${badgeClass}">${dlText}</span></td>
+    <td>${ext}</td>
+    <td><div class="action-cell">
+      <button class="btn btn-secondary btn-sm" onclick="startEdit('${r.orderNumber}')">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteResource('${r.orderNumber}')">Delete</button>
+    </div></td>
+  </tr>`;
+}
+
+function buildEditRow(r) {
+  const divisions = loadDivisions();
+  const divOpts = ["", ...divisions].map(d =>
+    `<option value="${d}" ${r.division===d?"selected":""}>${d||"(Unassigned)"}</option>`).join("");
+  const typeOpts = ["Ambo","Med Mod","Rems","Medic"].map(t =>
+    `<option ${r.resourceType===t?"selected":""}>${t}</option>`).join("");
+  const extOpts = ["Y","N"].map(v =>
+    `<option value="${v}" ${(r.availableExtension||"").toUpperCase().startsWith(v)?"selected":""}>${v==="Y"?"Yes":"No"}</option>`).join("");
+  const lenOpts = [14,21].map(v =>
+    `<option value="${v}" ${r.lengthOfAssignment===v?"selected":""}>${v} days</option>`).join("");
+
+  return `<tr class="edit-row" data-order="${r.orderNumber}">
+    <td colspan="13">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.6rem;margin-bottom:.75rem">
+        <div class="form-group"><label>Order #</label>
+          <input id="e-orderNumber" value="${r.orderNumber}" readonly style="opacity:.6"></div>
+        <div class="form-group"><label>Name</label>
+          <input id="e-name" value="${r.name}"></div>
+        <div class="form-group"><label>Phone</label>
+          <input id="e-phone" value="${r.phone}"></div>
+        <div class="form-group"><label>Email</label>
+          <input id="e-email" value="${r.email}"></div>
+        <div class="form-group"><label>Resource Type</label>
+          <select id="e-resourceType">${typeOpts}</select></div>
+        <div class="form-group"><label>Resource ID</label>
+          <input id="e-resourceIdentification" value="${r.resourceIdentification}"></div>
+        <div class="form-group"><label>Agency</label>
+          <input id="e-agency" value="${r.agency}"></div>
+        <div class="form-group"><label>Division</label>
+          <select id="e-division">${divOpts}</select></div>
+        <div class="form-group"><label>First Working Day</label>
+          <input type="date" id="e-firstWorkingDay" value="${r.firstWorkingDay}"></div>
+        <div class="form-group"><label>Length of Assignment</label>
+          <select id="e-lengthOfAssignment">${lenOpts}</select></div>
+        <div class="form-group"><label>Available for Extension</label>
+          <select id="e-availableExtension">${extOpts}</select></div>
+        <div class="form-group"><label>Vehicle Info</label>
+          <input id="e-vehicleInfo" value="${r.vehicleInfo}"></div>
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-primary btn-sm" onclick="saveEdit('${r.orderNumber}')">Save Changes</button>
+        <button class="btn btn-secondary btn-sm" onclick="cancelEdit()">Cancel</button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+function startEdit(orderNumber) {
+  editingOrder = orderNumber;
+  render();
+  document.querySelector(`tr[data-order="${orderNumber}"]`)?.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+function cancelEdit() { editingOrder = null; render(); }
+
+function saveEdit(orderNumber) {
+  const resources = loadResources();
+  const idx = resources.findIndex(r => r.orderNumber === orderNumber);
+  if (idx === -1) return;
+  const fields = ["name","phone","email","resourceType","resourceIdentification","agency",
+                  "division","firstWorkingDay","vehicleInfo"];
+  fields.forEach(f => {
+    const el = document.getElementById("e-" + f);
+    if (el) resources[idx][f] = el.value;
+  });
+  resources[idx].lengthOfAssignment = parseInt(document.getElementById("e-lengthOfAssignment").value) || 14;
+  resources[idx].availableExtension = document.getElementById("e-availableExtension").value;
+  saveResources(resources);
+  editingOrder = null;
+  render();
+  showToast("Resource updated.");
+}
+
+function deleteResource(orderNumber) {
+  if (!confirm(`Delete resource ${orderNumber}? This cannot be undone.`)) return;
+  const resources = loadResources().filter(r => r.orderNumber !== orderNumber);
+  saveResources(resources);
+  render();
+  showToast("Resource deleted.", true);
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "show" + (isError ? " error" : "");
+  setTimeout(() => t.className = "", 3000);
+}
+
+populateFilters();
+render();
+
+// Highlight from URL param
+const params = new URLSearchParams(location.search);
+if (params.get("edit")) { startEdit(params.get("edit")); }
+</script>
+</body>
+</html>

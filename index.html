@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Tacoma Creek Fire</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav>
+  <img src="image1.png" class="nav-logo" alt="Great Basin IMT7">
+  <a class="nav-brand" href="index.html">
+    Great Basin IMT7
+    <span class="brand-sub">Medical Group IMS</span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="active">Dashboard</a>
+    <a href="roster.html">Roster</a>
+    <a href="tracking.html">Tracking Chart</a>
+    <a href="add-resource.html">Add Resource</a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <h1>Incident <span>Dashboard</span></h1>
+  <p id="subtitle">Loading resource data…</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><div class="dot"></div>Live roster data</div>
+    <div class="hero-meta-item" id="hero-expiring-meta"></div>
+  </div>
+</div>
+
+<main>
+
+  <!-- Summary stat cards -->
+  <div class="section-label">Resource Counts by Type</div>
+  <div class="card-grid">
+    <div class="stat-card ambo">
+      <div class="stat-label">Ambulance</div>
+      <div class="stat-value" id="count-ambo">—</div>
+      <div class="stat-sub">Ambo resources</div>
+    </div>
+    <div class="stat-card medmod">
+      <div class="stat-label">Medical Module</div>
+      <div class="stat-value" id="count-medmod">—</div>
+      <div class="stat-sub">Med Mod resources</div>
+    </div>
+    <div class="stat-card rems">
+      <div class="stat-label">REMS</div>
+      <div class="stat-value" id="count-rems">—</div>
+      <div class="stat-sub">Rems resources</div>
+    </div>
+    <div class="stat-card medic">
+      <div class="stat-label">Medic</div>
+      <div class="stat-value" id="count-medic">—</div>
+      <div class="stat-sub">Medic resources</div>
+    </div>
+    <div class="stat-card total">
+      <div class="stat-label">Total Resources</div>
+      <div class="stat-value" id="count-total">—</div>
+      <div class="stat-sub">All types combined</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-label">Expiring ≤ 3 Days</div>
+      <div class="stat-value" id="count-expiring">—</div>
+      <div class="stat-sub">Require immediate action</div>
+    </div>
+  </div>
+
+  <!-- Expiring soon alert -->
+  <div class="alert-box" id="alert-section" style="display:none">
+    <div class="alert-box-title">
+      Expiring Soon — Action Required
+      <span class="alert-count-pill" id="alert-count-pill">0</span>
+    </div>
+    <table class="alert-table">
+      <thead>
+        <tr>
+          <th>Order #</th>
+          <th>Name</th>
+          <th>Agency</th>
+          <th>Resource ID</th>
+          <th>Type</th>
+          <th>Division</th>
+          <th>Last Working Day</th>
+          <th>Days Left</th>
+          <th>Extension</th>
+        </tr>
+      </thead>
+      <tbody id="alert-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Division breakdown -->
+  <div class="section-header">
+    <h2>Resources by Division</h2>
+  </div>
+  <div class="card-grid" id="div-cards"></div>
+
+  <div class="section-divider"></div>
+
+  <!-- Full roster overview -->
+  <div class="section-header">
+    <h2>Full Roster Overview</h2>
+    <a href="roster.html" class="btn btn-ghost btn-sm">View full roster →</a>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Order #</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Agency</th>
+          <th>Division</th>
+          <th>First Working Day</th>
+          <th>Last Working Day</th>
+          <th>Days Left</th>
+          <th>Extension</th>
+        </tr>
+      </thead>
+      <tbody id="roster-tbody"></tbody>
+    </table>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  const resources = loadResources();
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const counts = { Ambo:0, "Med Mod":0, Rems:0, Medic:0 };
+  resources.forEach(r => { if (counts[r.resourceType] !== undefined) counts[r.resourceType]++; });
+
+  document.getElementById("count-ambo").textContent   = counts["Ambo"];
+  document.getElementById("count-medmod").textContent = counts["Med Mod"];
+  document.getElementById("count-rems").textContent   = counts["Rems"];
+  document.getElementById("count-medic").textContent  = counts["Medic"];
+  document.getElementById("count-total").textContent  = resources.length;
+
+  document.getElementById("subtitle").textContent =
+    `As of ${today.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"})} — ${resources.length} resources on roster`;
+
+  const expiring = resources.filter(r => { const dl = daysLeft(r); return dl !== null && dl <= 3; })
+    .sort((a,b) => daysLeft(a) - daysLeft(b));
+
+  document.getElementById("count-expiring").textContent = expiring.length;
+  document.getElementById("alert-count-pill").textContent = expiring.length;
+
+  if (expiring.length > 0) {
+    document.getElementById("alert-section").style.display = "";
+    document.getElementById("hero-expiring-meta").innerHTML =
+      `<span style="color:var(--danger);font-weight:600">${expiring.length} resource${expiring.length>1?'s':''} expiring soon</span>`;
+    const tbody = document.getElementById("alert-tbody");
+    expiring.forEach(r => {
+      const dl = daysLeft(r);
+      const lwd = lastWorkingDay(r);
+      const badgeClass = dl < 0 ? "expired" : dl === 0 ? "critical" : dl <= 1 ? "critical" : "warning";
+      const dlText = dl < 0 ? `${Math.abs(dl)}d ago` : dl === 0 ? "Today" : `${dl}d`;
+      const ext = (r.availableExtension||"").toUpperCase().startsWith("Y") ? "✓ Yes" : "✗ No";
+      tbody.insertAdjacentHTML("beforeend", `
+        <tr>
+          <td><code style="color:var(--text-muted);font-size:.78rem">${r.orderNumber}</code></td>
+          <td><strong>${r.name}</strong></td>
+          <td>${r.agency}</td>
+          <td>${r.resourceIdentification||"—"}</td>
+          <td>${typeBadge(r.resourceType)}</td>
+          <td>${r.division||"—"}</td>
+          <td>${lwd ? fmtDate(lwd) : "—"}</td>
+          <td><span class="days-badge ${badgeClass}">${dlText}</span></td>
+          <td>${ext}</td>
+        </tr>`);
+    });
+  }
+
+  // Division breakdown cards
+  const divMap = {};
+  resources.forEach(r => {
+    const d = r.division || "(Unassigned)";
+    if (!divMap[d]) divMap[d] = { Ambo:0, "Med Mod":0, Rems:0, Medic:0, total:0 };
+    divMap[d].total++;
+    if (divMap[d][r.resourceType] !== undefined) divMap[d][r.resourceType]++;
+  });
+
+  const divGrid = document.getElementById("div-cards");
+  Object.entries(divMap).sort(([a],[b])=>a.localeCompare(b)).forEach(([div, cnts]) => {
+    const pills = [
+      cnts["Ambo"]    ? `<span style="color:#e87722;font-weight:600">${cnts["Ambo"]} Ambo</span>` : "",
+      cnts["Med Mod"] ? `<span style="color:#4a9fda;font-weight:600">${cnts["Med Mod"]} Med Mod</span>` : "",
+      cnts["Rems"]    ? `<span style="color:#27a84a;font-weight:600">${cnts["Rems"]} Rems</span>` : "",
+      cnts["Medic"]   ? `<span style="color:#b060d4;font-weight:600">${cnts["Medic"]} Medic</span>` : "",
+    ].filter(Boolean).join(" · ");
+    divGrid.insertAdjacentHTML("beforeend", `
+      <div class="stat-card total" style="--card-accent:var(--border-lt);--card-glow:transparent">
+        <div class="stat-label">Division — ${div}</div>
+        <div class="stat-value" style="font-size:2rem">${cnts.total}</div>
+        <div class="stat-sub">${pills}</div>
+      </div>`);
+  });
+
+  // Roster overview table
+  const tbody = document.getElementById("roster-tbody");
+  [...resources].sort((a,b)=>a.name.localeCompare(b.name)).forEach(r => {
+    const dl = daysLeft(r);
+    const lwd = lastWorkingDay(r);
+    const badgeClass = dl===null?"ok":dl<0?"expired":dl<=1?"critical":dl<=3?"warning":"ok";
+    const dlText = dl===null?"—":dl<0?`${Math.abs(dl)}d ago`:dl===0?"Today":`${dl}d`;
+    const ext = (r.availableExtension||"").toUpperCase().startsWith("Y") ? "✓" : "✗";
+    tbody.insertAdjacentHTML("beforeend", `
+      <tr>
+        <td><code style="color:var(--text-muted);font-size:.78rem">${r.orderNumber}</code></td>
+        <td><strong>${r.name}</strong></td>
+        <td>${typeBadge(r.resourceType)}</td>
+        <td>${r.agency}</td>
+        <td>${r.division||"—"}</td>
+        <td>${r.firstWorkingDay?fmtDate(new Date(r.firstWorkingDay+"T00:00:00")):"—"}</td>
+        <td>${lwd?fmtDate(lwd):"—"}</td>
+        <td><span class="days-badge ${badgeClass}">${dlText}</span></td>
+        <td style="text-align:center">${ext}</td>
+      </tr>`);
+  });
+})();
+</script>
+</body>
+</html>
