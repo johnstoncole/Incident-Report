@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Add Resource — Tacoma Creek Fire</title>
 <link rel="stylesheet" href="styles.css?v=2">
-<script src="https://accounts.google.com/gsi/client" async></script>
 </head>
 <body>
 
@@ -325,12 +324,6 @@ let isEditing = false;
 // Pending File objects chosen by the user (not yet uploaded)
 const pendingFiles = { redcard: null, order: null, contract: null, photo: null };
 
-// Initialize Google Drive token client once GIS loads
-window.addEventListener("load", () => {
-  if (typeof google !== "undefined" && google.accounts) {
-    driveInit();
-  }
-});
 
 function populateDivisionSelect(selectedDiv) {
   const sel = document.getElementById("division");
