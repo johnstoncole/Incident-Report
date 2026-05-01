@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tracking Chart — Tacoma Creek Fire</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=2">
 <style>
   .cell-fwd     { background: #1a6fba !important; color:#fff; font-weight:700; text-align:center; font-size:.7rem; }
   .cell-lwd     { background: #c00 !important;    color:#fff; font-weight:700; text-align:center; font-size:.7rem; }
@@ -103,6 +103,8 @@
 
 <div id="toast"></div>
 
+<script src="auth.js"></script>
+<script>checkAuth();</script>
 <script src="data.js"></script>
 <script>
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];

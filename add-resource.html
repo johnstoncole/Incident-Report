@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Add Resource — Tacoma Creek Fire</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
 
@@ -222,6 +222,84 @@
         </div>
       </div>
 
+      <!-- Documents -->
+      <div class="form-section-title">Documents &amp; Photos</div>
+      <div class="upload-grid">
+
+        <div class="upload-box" id="box-redcard">
+          <input type="file" id="file-redcard" accept=".pdf" style="display:none" onchange="handleFile('file-redcard','box-redcard','name-redcard','stored-redcard','actions-redcard')">
+          <div class="upload-box-label">Red Card (PDF)</div>
+          <div class="upload-box-inner">
+            <div class="upload-icon">&#128196;</div>
+            <div class="upload-text">
+              <div class="upload-filename" id="name-redcard">No file selected</div>
+              <div class="upload-hint">PDF only · max 4 MB</div>
+            </div>
+          </div>
+          <div class="upload-actions">
+            <button type="button" class="upload-choose-btn" onclick="document.getElementById('file-redcard').click()">Choose File</button>
+            <button type="button" class="upload-view-btn" id="view-redcard" style="display:none" onclick="viewFile('stored-redcard')">View</button>
+            <button type="button" class="upload-clear-btn" id="actions-redcard" style="display:none" onclick="clearFile('file-redcard','box-redcard','name-redcard','stored-redcard','actions-redcard','view-redcard')">Remove</button>
+          </div>
+          <input type="hidden" id="stored-redcard">
+        </div>
+
+        <div class="upload-box" id="box-order">
+          <input type="file" id="file-order" accept=".pdf" style="display:none" onchange="handleFile('file-order','box-order','name-order','stored-order','actions-order')">
+          <div class="upload-box-label">Resource Order (PDF)</div>
+          <div class="upload-box-inner">
+            <div class="upload-icon">&#128196;</div>
+            <div class="upload-text">
+              <div class="upload-filename" id="name-order">No file selected</div>
+              <div class="upload-hint">PDF only · max 4 MB</div>
+            </div>
+          </div>
+          <div class="upload-actions">
+            <button type="button" class="upload-choose-btn" onclick="document.getElementById('file-order').click()">Choose File</button>
+            <button type="button" class="upload-view-btn" id="view-order" style="display:none" onclick="viewFile('stored-order')">View</button>
+            <button type="button" class="upload-clear-btn" id="actions-order" style="display:none" onclick="clearFile('file-order','box-order','name-order','stored-order','actions-order','view-order')">Remove</button>
+          </div>
+          <input type="hidden" id="stored-order">
+        </div>
+
+        <div class="upload-box" id="box-contract">
+          <input type="file" id="file-contract" accept=".pdf" style="display:none" onchange="handleFile('file-contract','box-contract','name-contract','stored-contract','actions-contract')">
+          <div class="upload-box-label">Contract (PDF)</div>
+          <div class="upload-box-inner">
+            <div class="upload-icon">&#128196;</div>
+            <div class="upload-text">
+              <div class="upload-filename" id="name-contract">No file selected</div>
+              <div class="upload-hint">PDF only · max 4 MB</div>
+            </div>
+          </div>
+          <div class="upload-actions">
+            <button type="button" class="upload-choose-btn" onclick="document.getElementById('file-contract').click()">Choose File</button>
+            <button type="button" class="upload-view-btn" id="view-contract" style="display:none" onclick="viewFile('stored-contract')">View</button>
+            <button type="button" class="upload-clear-btn" id="actions-contract" style="display:none" onclick="clearFile('file-contract','box-contract','name-contract','stored-contract','actions-contract','view-contract')">Remove</button>
+          </div>
+          <input type="hidden" id="stored-contract">
+        </div>
+
+        <div class="upload-box" id="box-photo">
+          <input type="file" id="file-photo" accept="image/*" style="display:none" onchange="handleFile('file-photo','box-photo','name-photo','stored-photo','actions-photo')">
+          <div class="upload-box-label">Group Photo</div>
+          <div class="upload-box-inner">
+            <div class="upload-icon">&#128444;</div>
+            <div class="upload-text">
+              <div class="upload-filename" id="name-photo">No file selected</div>
+              <div class="upload-hint">JPG, PNG, HEIC · max 4 MB</div>
+            </div>
+          </div>
+          <div class="upload-actions">
+            <button type="button" class="upload-choose-btn" onclick="document.getElementById('file-photo').click()">Choose File</button>
+            <button type="button" class="upload-view-btn" id="view-photo" style="display:none" onclick="viewFile('stored-photo')">View</button>
+            <button type="button" class="upload-clear-btn" id="actions-photo" style="display:none" onclick="clearFile('file-photo','box-photo','name-photo','stored-photo','actions-photo','view-photo')">Remove</button>
+          </div>
+          <input type="hidden" id="stored-photo">
+        </div>
+
+      </div>
+
       <div class="form-actions">
         <button type="submit" class="btn btn-primary" id="submit-btn">Add to Roster</button>
         <button type="button" class="btn btn-secondary" onclick="resetForm()">Clear Form</button>
@@ -336,6 +414,7 @@ function handleSubmit(e) {
     if (idx === -1) { showToast("Resource not found.", true); return; }
     resources[idx] = { ...resources[idx], ...data };
     saveResources(resources);
+    saveFilesToStorage(data.orderNumber);
     showToast("Resource updated successfully.");
     setTimeout(() => location.href = "roster.html", 1200);
   } else {
@@ -345,6 +424,7 @@ function handleSubmit(e) {
     }
     resources.push(data);
     saveResources(resources);
+    saveFilesToStorage(data.orderNumber);
     showToast("Resource added to roster!");
     document.getElementById("form-status").textContent = `✓ ${data.name} added.`;
     setTimeout(() => {
@@ -354,10 +434,98 @@ function handleSubmit(e) {
   }
 }
 
+// ── File uploads ────────────────────────────────────────
+function handleFile(inputId, boxId, nameId, storedId, clearBtnId) {
+  const file = document.getElementById(inputId).files[0];
+  if (!file) return;
+  if (file.size > 4 * 1024 * 1024) {
+    showToast("File too large (max 4 MB). Please compress it first.", true);
+    document.getElementById(inputId).value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById(storedId).value = e.target.result;
+    document.getElementById(nameId).textContent = file.name;
+    document.getElementById(boxId).classList.add("has-file");
+    document.getElementById(clearBtnId).style.display = "inline-block";
+    document.getElementById("view-" + storedId.replace("stored-","")).style.display = "inline-block";
+  };
+  reader.readAsDataURL(file);
+}
+
+function viewFile(storedId) {
+  const data = document.getElementById(storedId).value;
+  if (!data) return;
+  const win = window.open();
+  if (data.startsWith("data:image")) {
+    win.document.write(`<body style="margin:0;background:#111"><img src="${data}" style="max-width:100%;display:block"></body>`);
+  } else {
+    win.document.write(`<body style="margin:0"><iframe src="${data}" style="width:100%;height:100vh;border:none"></iframe></body>`);
+  }
+}
+
+function clearFile(inputId, boxId, nameId, storedId, clearBtnId, viewBtnId) {
+  document.getElementById(inputId).value = "";
+  document.getElementById(storedId).value = "";
+  document.getElementById(nameId).textContent = "No file selected";
+  document.getElementById(boxId).classList.remove("has-file");
+  document.getElementById(clearBtnId).style.display = "none";
+  document.getElementById(viewBtnId).style.display = "none";
+}
+
+function saveFilesToStorage(orderNumber) {
+  const slots = [
+    { stored: "stored-redcard",  key: "redcard"  },
+    { stored: "stored-order",    key: "resorder"  },
+    { stored: "stored-contract", key: "contract" },
+    { stored: "stored-photo",    key: "photo"    },
+  ];
+  slots.forEach(({ stored, key }) => {
+    const data = document.getElementById(stored).value;
+    if (data) {
+      try { localStorage.setItem(`cimt7_file_${orderNumber}_${key}`, data); } catch(e) {
+        showToast("Storage full — file not saved. Try compressing it.", true);
+      }
+    }
+  });
+}
+
+function loadFilesFromStorage(orderNumber) {
+  const slots = [
+    { stored: "stored-redcard",  key: "redcard",  box: "box-redcard",  name: "name-redcard",  clear: "actions-redcard",  view: "view-redcard"  },
+    { stored: "stored-order",    key: "resorder", box: "box-order",    name: "name-order",    clear: "actions-order",    view: "view-order"    },
+    { stored: "stored-contract", key: "contract", box: "box-contract", name: "name-contract", clear: "actions-contract", view: "view-contract" },
+    { stored: "stored-photo",    key: "photo",    box: "box-photo",    name: "name-photo",    clear: "actions-photo",    view: "view-photo"    },
+  ];
+  slots.forEach(({ stored, key, box, name, clear, view }) => {
+    const data = localStorage.getItem(`cimt7_file_${orderNumber}_${key}`);
+    if (data) {
+      document.getElementById(stored).value = data;
+      document.getElementById(name).textContent = "Saved file";
+      document.getElementById(box).classList.add("has-file");
+      document.getElementById(clear).style.display = "inline-block";
+      document.getElementById(view).style.display  = "inline-block";
+    }
+  });
+}
+
 function resetForm() {
   document.getElementById("resource-form").reset();
   populateDivisionSelect(presetDiv);
   document.getElementById("calcLWD").value = "";
+  ["redcard","order","contract","photo"].forEach(k => {
+    const stored = "stored-" + k, box = "box-" + k, name = "name-" + k;
+    const clearBtn = "actions-" + k, viewBtn = "view-" + k;
+    if (document.getElementById(stored)) {
+      document.getElementById("file-" + k).value = "";
+      document.getElementById(stored).value = "";
+      document.getElementById(name).textContent = "No file selected";
+      document.getElementById(box).classList.remove("has-file");
+      document.getElementById(clearBtn).style.display = "none";
+      document.getElementById(viewBtn).style.display = "none";
+    }
+  });
 }
 
 function showToast(msg, isError = false) {
@@ -380,6 +548,7 @@ if (editOrder) {
     document.getElementById("orderNumber").readOnly    = true;
     document.getElementById("orderNumber").style.opacity = ".6";
     fillForm(resource);
+    loadFilesFromStorage(editOrder);
   } else {
     showToast(`Resource ${editOrder} not found.`, true);
   }
