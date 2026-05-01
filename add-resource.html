@@ -436,11 +436,6 @@ async function handleSubmit(e) {
   if (!data.orderNumber) { showToast("Order Number is required.", true); return; }
   if (!data.name)         { showToast("Name is required.", true); return; }
 
-  // Check for Client ID placeholder
-  if (GOOGLE_CLIENT_ID.includes("YOUR_CLIENT_ID")) {
-    showToast("Google Drive not configured — add your Client ID to config.js. Files skipped.", true);
-  }
-
   const submitBtn = document.getElementById("submit-btn");
   submitBtn.disabled = true;
 
@@ -449,7 +444,7 @@ async function handleSubmit(e) {
 
   // Upload any pending files
   const hasPending = Object.values(pendingFiles).some(Boolean);
-  if (hasPending && !GOOGLE_CLIENT_ID.includes("YOUR_CLIENT_ID")) {
+  if (hasPending) {
     try {
       driveLinks = await uploadAllPendingFiles(data.orderNumber, data.agency);
     } catch (err) {
