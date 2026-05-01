@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Add Resource — Tacoma Creek Fire</title>
 <link rel="stylesheet" href="styles.css?v=2">
+<script src="https://accounts.google.com/gsi/client" async></script>
 </head>
 <body>
 
@@ -12,7 +13,7 @@
   <img src="image1.png" class="nav-logo" alt="Great Basin CIMT 7">
   <a class="nav-brand" href="index.html">
     Great Basin CIMT 7
-    <span class="brand-sub">Medical Group IMS</span>
+    <span class="brand-sub">Medical Group</span>
   </a>
   <div class="nav-links">
     <a href="index.html">Dashboard</a>
@@ -233,7 +234,7 @@
             <div class="upload-icon">&#128196;</div>
             <div class="upload-text">
               <div class="upload-filename" id="name-redcard">No file selected</div>
-              <div class="upload-hint">PDF only · max 4 MB</div>
+              <div class="upload-hint">PDF only · uploads to Google Drive</div>
             </div>
           </div>
           <div class="upload-actions">
@@ -251,7 +252,7 @@
             <div class="upload-icon">&#128196;</div>
             <div class="upload-text">
               <div class="upload-filename" id="name-order">No file selected</div>
-              <div class="upload-hint">PDF only · max 4 MB</div>
+              <div class="upload-hint">PDF only · uploads to Google Drive</div>
             </div>
           </div>
           <div class="upload-actions">
@@ -269,7 +270,7 @@
             <div class="upload-icon">&#128196;</div>
             <div class="upload-text">
               <div class="upload-filename" id="name-contract">No file selected</div>
-              <div class="upload-hint">PDF only · max 4 MB</div>
+              <div class="upload-hint">PDF only · uploads to Google Drive</div>
             </div>
           </div>
           <div class="upload-actions">
@@ -287,7 +288,7 @@
             <div class="upload-icon">&#128444;</div>
             <div class="upload-text">
               <div class="upload-filename" id="name-photo">No file selected</div>
-              <div class="upload-hint">JPG, PNG, HEIC · max 4 MB</div>
+              <div class="upload-hint">JPG, PNG, HEIC · uploads to Google Drive</div>
             </div>
           </div>
           <div class="upload-actions">
@@ -313,11 +314,23 @@
 <div id="toast"></div>
 
 <script src="data.js"></script>
+<script src="config.js"></script>
+<script src="drive.js"></script>
 <script>
 const params = new URLSearchParams(location.search);
 const editOrder = params.get("edit");
 const presetDiv = params.get("div") || "";
 let isEditing = false;
+
+// Pending File objects chosen by the user (not yet uploaded)
+const pendingFiles = { redcard: null, order: null, contract: null, photo: null };
+
+// Initialize Google Drive token client once GIS loads
+window.addEventListener("load", () => {
+  if (typeof google !== "undefined" && google.accounts) {
+    driveInit();
+  }
+});
 
 function populateDivisionSelect(selectedDiv) {
   const sel = document.getElementById("division");
@@ -351,34 +364,34 @@ function updateLWD() {
 function getFormData() {
   const ts = document.getElementById("timestamp").value;
   return {
-    orderNumber:          document.getElementById("orderNumber").value.trim(),
-    timestamp:            ts ? ts.replace("T"," ").slice(0,16) : new Date().toISOString().slice(0,10),
-    name:                 document.getElementById("name").value.trim(),
-    phone:                document.getElementById("phone").value.trim(),
-    email:                document.getElementById("email").value.trim(),
-    contractType:         document.getElementById("contractType").value,
-    agency:               document.getElementById("agency").value.trim(),
-    deptIdentifier:       document.getElementById("deptIdentifier").value.trim(),
-    homeAddress:          document.getElementById("homeAddress").value.trim(),
-    supervisorName:       document.getElementById("supervisorName").value.trim(),
-    supervisorPhone:      document.getElementById("supervisorPhone").value.trim(),
-    supervisorEmail:      document.getElementById("supervisorEmail").value.trim(),
-    firstDayAssigned:     document.getElementById("firstDayAssigned").value,
-    firstWorkingDay:      document.getElementById("firstWorkingDay").value,
-    availableExtension:   document.getElementById("availableExtension").value,
-    vehicleInfo:          document.getElementById("vehicleInfo").value.trim(),
-    fourWheelDrive:       document.getElementById("fourWheelDrive").value,
-    stateLicensure:       document.getElementById("stateLicensure").value.trim(),
-    licensureNumber:      document.getElementById("licensureNumber").value.trim(),
-    licensureExpiration:  document.getElementById("licensureExpiration").value,
-    driversLicense:       document.getElementById("driversLicense").value.trim(),
-    certifications:       document.getElementById("certifications").value.trim(),
-    redCard:              document.getElementById("redCard").value,
-    orderIdentifier:      document.getElementById("orderIdentifier").value.trim(),
+    orderNumber:            document.getElementById("orderNumber").value.trim(),
+    timestamp:              ts ? ts.replace("T"," ").slice(0,16) : new Date().toISOString().slice(0,10),
+    name:                   document.getElementById("name").value.trim(),
+    phone:                  document.getElementById("phone").value.trim(),
+    email:                  document.getElementById("email").value.trim(),
+    contractType:           document.getElementById("contractType").value,
+    agency:                 document.getElementById("agency").value.trim(),
+    deptIdentifier:         document.getElementById("deptIdentifier").value.trim(),
+    homeAddress:            document.getElementById("homeAddress").value.trim(),
+    supervisorName:         document.getElementById("supervisorName").value.trim(),
+    supervisorPhone:        document.getElementById("supervisorPhone").value.trim(),
+    supervisorEmail:        document.getElementById("supervisorEmail").value.trim(),
+    firstDayAssigned:       document.getElementById("firstDayAssigned").value,
+    firstWorkingDay:        document.getElementById("firstWorkingDay").value,
+    availableExtension:     document.getElementById("availableExtension").value,
+    vehicleInfo:            document.getElementById("vehicleInfo").value.trim(),
+    fourWheelDrive:         document.getElementById("fourWheelDrive").value,
+    stateLicensure:         document.getElementById("stateLicensure").value.trim(),
+    licensureNumber:        document.getElementById("licensureNumber").value.trim(),
+    licensureExpiration:    document.getElementById("licensureExpiration").value,
+    driversLicense:         document.getElementById("driversLicense").value.trim(),
+    certifications:         document.getElementById("certifications").value.trim(),
+    redCard:                document.getElementById("redCard").value,
+    orderIdentifier:        document.getElementById("orderIdentifier").value.trim(),
     resourceIdentification: document.getElementById("resourceIdentification").value.trim(),
-    resourceType:         document.getElementById("resourceType").value,
-    division:             document.getElementById("division").value,
-    lengthOfAssignment:   parseInt(document.getElementById("lengthOfAssignment").value) || 14,
+    resourceType:           document.getElementById("resourceType").value,
+    division:               document.getElementById("division").value,
+    lengthOfAssignment:     parseInt(document.getElementById("lengthOfAssignment").value) || 14,
   };
 }
 
@@ -394,78 +407,131 @@ function fillForm(r) {
   });
   document.getElementById("lengthOfAssignment").value = r.lengthOfAssignment || 14;
   populateDivisionSelect(r.division || "");
-  if (r.timestamp) {
-    document.getElementById("timestamp").value = r.timestamp.replace(" ","T");
-  }
+  if (r.timestamp) document.getElementById("timestamp").value = r.timestamp.replace(" ","T");
   updateLWD();
 }
 
-function handleSubmit(e) {
+// Upload all pending files for a given order number. Returns drive links object.
+async function uploadAllPendingFiles(orderNumber, agency) {
+  const labels = { redcard: "RedCard", order: "ResourceOrder", contract: "Contract", photo: "GroupPhoto" };
+  const links = {};
+  const slots = Object.keys(pendingFiles).filter(k => pendingFiles[k]);
+  if (slots.length === 0) return links;
+
+  setStatus(`Uploading ${slots.length} file(s) to Google Drive…`);
+  for (const key of slots) {
+    const file = pendingFiles[key];
+    setStatus(`Uploading ${file.name}…`);
+    try {
+      const result = await uploadFileToDrive(file, orderNumber, labels[key], agency);
+      links[key] = result.webViewLink;
+    } catch (err) {
+      showToast(`Upload failed for ${file.name}: ${err.message || err}`, true);
+    }
+  }
+  setStatus("");
+  return links;
+}
+
+async function handleSubmit(e) {
   e.preventDefault();
   const data = getFormData();
 
   if (!data.orderNumber) { showToast("Order Number is required.", true); return; }
   if (!data.name)         { showToast("Name is required.", true); return; }
 
+  // Check for Client ID placeholder
+  if (GOOGLE_CLIENT_ID.includes("YOUR_CLIENT_ID")) {
+    showToast("Google Drive not configured — add your Client ID to config.js. Files skipped.", true);
+  }
+
+  const submitBtn = document.getElementById("submit-btn");
+  submitBtn.disabled = true;
+
   const resources = loadResources();
+  let driveLinks = {};
+
+  // Upload any pending files
+  const hasPending = Object.values(pendingFiles).some(Boolean);
+  if (hasPending && !GOOGLE_CLIENT_ID.includes("YOUR_CLIENT_ID")) {
+    try {
+      driveLinks = await uploadAllPendingFiles(data.orderNumber, data.agency);
+    } catch (err) {
+      showToast("Drive upload error: " + (err.message || err), true);
+      submitBtn.disabled = false;
+      return;
+    }
+  }
 
   if (isEditing) {
     const idx = resources.findIndex(r => r.orderNumber === editOrder);
-    if (idx === -1) { showToast("Resource not found.", true); return; }
-    resources[idx] = { ...resources[idx], ...data };
+    if (idx === -1) { showToast("Resource not found.", true); submitBtn.disabled = false; return; }
+    // Merge new drive links with any existing ones
+    const existingLinks = resources[idx].driveLinks || {};
+    resources[idx] = { ...resources[idx], ...data, driveLinks: { ...existingLinks, ...driveLinks } };
     saveResources(resources);
-    saveFilesToStorage(data.orderNumber);
     showToast("Resource updated successfully.");
     setTimeout(() => location.href = "roster.html", 1200);
   } else {
     if (resources.find(r => r.orderNumber === data.orderNumber)) {
       showToast(`Order number ${data.orderNumber} already exists. Use a unique number.`, true);
+      submitBtn.disabled = false;
       return;
     }
+    data.driveLinks = driveLinks;
     resources.push(data);
     saveResources(resources);
-    saveFilesToStorage(data.orderNumber);
     showToast("Resource added to roster!");
     document.getElementById("form-status").textContent = `✓ ${data.name} added.`;
     setTimeout(() => {
       resetForm();
       document.getElementById("form-status").textContent = "";
+      submitBtn.disabled = false;
     }, 2000);
-  }
-}
-
-// ── File uploads ────────────────────────────────────────
-function handleFile(inputId, boxId, nameId, storedId, clearBtnId) {
-  const file = document.getElementById(inputId).files[0];
-  if (!file) return;
-  if (file.size > 4 * 1024 * 1024) {
-    showToast("File too large (max 4 MB). Please compress it first.", true);
-    document.getElementById(inputId).value = "";
     return;
   }
-  const reader = new FileReader();
-  reader.onload = e => {
-    document.getElementById(storedId).value = e.target.result;
-    document.getElementById(nameId).textContent = file.name;
-    document.getElementById(boxId).classList.add("has-file");
-    document.getElementById(clearBtnId).style.display = "inline-block";
-    document.getElementById("view-" + storedId.replace("stored-","")).style.display = "inline-block";
-  };
-  reader.readAsDataURL(file);
+
+  submitBtn.disabled = false;
 }
 
-function viewFile(storedId) {
-  const data = document.getElementById(storedId).value;
-  if (!data) return;
-  const win = window.open();
-  if (data.startsWith("data:image")) {
-    win.document.write(`<body style="margin:0;background:#111"><img src="${data}" style="max-width:100%;display:block"></body>`);
-  } else {
-    win.document.write(`<body style="margin:0"><iframe src="${data}" style="width:100%;height:100vh;border:none"></iframe></body>`);
+// ── File selection ─────────────────────────────────────
+function handleFile(inputId, boxId, nameId, storedId, clearBtnId) {
+  const slotKey = inputId.replace("file-", "");
+  const file = document.getElementById(inputId).files[0];
+  if (!file) return;
+
+  pendingFiles[slotKey] = file;
+  document.getElementById(nameId).textContent = file.name;
+  document.getElementById(boxId).classList.add("has-file");
+  document.getElementById(clearBtnId).style.display = "inline-block";
+
+  // Hide view button for pending (not yet uploaded) files — no URL yet
+  const viewBtn = document.getElementById("view-" + slotKey);
+  if (viewBtn) viewBtn.style.display = "none";
+
+  // Show Drive link if we already have one (e.g. re-selecting in edit mode)
+  const resource = isEditing ? loadResources().find(r => r.orderNumber === editOrder) : null;
+  const existingUrl = resource && resource.driveLinks && resource.driveLinks[slotKey];
+  if (existingUrl && viewBtn) viewBtn.style.display = "inline-block";
+}
+
+function viewFile(slotKey) {
+  // First check if we have a pending file with a blob URL
+  if (pendingFiles[slotKey]) {
+    const url = URL.createObjectURL(pendingFiles[slotKey]);
+    window.open(url, "_blank");
+    return;
   }
+  // Otherwise open the stored Drive link
+  const storedEl = document.getElementById("stored-" + slotKey);
+  const url = storedEl && storedEl.value;
+  if (url) { window.open(url, "_blank"); return; }
+  showToast("No file available to view yet.", true);
 }
 
 function clearFile(inputId, boxId, nameId, storedId, clearBtnId, viewBtnId) {
+  const slotKey = inputId.replace("file-", "");
+  pendingFiles[slotKey] = null;
   document.getElementById(inputId).value = "";
   document.getElementById(storedId).value = "";
   document.getElementById(nameId).textContent = "No file selected";
@@ -474,39 +540,22 @@ function clearFile(inputId, boxId, nameId, storedId, clearBtnId, viewBtnId) {
   document.getElementById(viewBtnId).style.display = "none";
 }
 
-function saveFilesToStorage(orderNumber) {
-  const slots = [
-    { stored: "stored-redcard",  key: "redcard"  },
-    { stored: "stored-order",    key: "resorder"  },
-    { stored: "stored-contract", key: "contract" },
-    { stored: "stored-photo",    key: "photo"    },
-  ];
-  slots.forEach(({ stored, key }) => {
-    const data = document.getElementById(stored).value;
-    if (data) {
-      try { localStorage.setItem(`cimt7_file_${orderNumber}_${key}`, data); } catch(e) {
-        showToast("Storage full — file not saved. Try compressing it.", true);
-      }
-    }
-  });
-}
-
-function loadFilesFromStorage(orderNumber) {
-  const slots = [
-    { stored: "stored-redcard",  key: "redcard",  box: "box-redcard",  name: "name-redcard",  clear: "actions-redcard",  view: "view-redcard"  },
-    { stored: "stored-order",    key: "resorder", box: "box-order",    name: "name-order",    clear: "actions-order",    view: "view-order"    },
-    { stored: "stored-contract", key: "contract", box: "box-contract", name: "name-contract", clear: "actions-contract", view: "view-contract" },
-    { stored: "stored-photo",    key: "photo",    box: "box-photo",    name: "name-photo",    clear: "actions-photo",    view: "view-photo"    },
-  ];
-  slots.forEach(({ stored, key, box, name, clear, view }) => {
-    const data = localStorage.getItem(`cimt7_file_${orderNumber}_${key}`);
-    if (data) {
-      document.getElementById(stored).value = data;
-      document.getElementById(name).textContent = "Saved file";
-      document.getElementById(box).classList.add("has-file");
-      document.getElementById(clear).style.display = "inline-block";
-      document.getElementById(view).style.display  = "inline-block";
-    }
+function loadDriveLinks(resource) {
+  if (!resource || !resource.driveLinks) return;
+  const map = {
+    redcard:  { box: "box-redcard",  name: "name-redcard",  clear: "actions-redcard",  view: "view-redcard",  stored: "stored-redcard"  },
+    order:    { box: "box-order",    name: "name-order",    clear: "actions-order",    view: "view-order",    stored: "stored-order"    },
+    contract: { box: "box-contract", name: "name-contract", clear: "actions-contract", view: "view-contract", stored: "stored-contract" },
+    photo:    { box: "box-photo",    name: "name-photo",    clear: "actions-photo",    view: "view-photo",    stored: "stored-photo"    },
+  };
+  Object.entries(resource.driveLinks).forEach(([key, url]) => {
+    if (!url || !map[key]) return;
+    const m = map[key];
+    document.getElementById(m.stored).value = url;
+    document.getElementById(m.name).textContent = "Uploaded to Drive";
+    document.getElementById(m.box).classList.add("has-file");
+    document.getElementById(m.clear).style.display = "inline-block";
+    document.getElementById(m.view).style.display  = "inline-block";
   });
 }
 
@@ -515,17 +564,18 @@ function resetForm() {
   populateDivisionSelect(presetDiv);
   document.getElementById("calcLWD").value = "";
   ["redcard","order","contract","photo"].forEach(k => {
-    const stored = "stored-" + k, box = "box-" + k, name = "name-" + k;
-    const clearBtn = "actions-" + k, viewBtn = "view-" + k;
-    if (document.getElementById(stored)) {
-      document.getElementById("file-" + k).value = "";
-      document.getElementById(stored).value = "";
-      document.getElementById(name).textContent = "No file selected";
-      document.getElementById(box).classList.remove("has-file");
-      document.getElementById(clearBtn).style.display = "none";
-      document.getElementById(viewBtn).style.display = "none";
-    }
+    pendingFiles[k] = null;
+    document.getElementById("file-" + k).value = "";
+    document.getElementById("stored-" + k).value = "";
+    document.getElementById("name-" + k).textContent = "No file selected";
+    document.getElementById("box-" + k).classList.remove("has-file");
+    document.getElementById("actions-" + k).style.display = "none";
+    document.getElementById("view-" + k).style.display = "none";
   });
+}
+
+function setStatus(msg) {
+  document.getElementById("form-status").textContent = msg;
 }
 
 function showToast(msg, isError = false) {
@@ -548,12 +598,11 @@ if (editOrder) {
     document.getElementById("orderNumber").readOnly    = true;
     document.getElementById("orderNumber").style.opacity = ".6";
     fillForm(resource);
-    loadFilesFromStorage(editOrder);
+    loadDriveLinks(resource);
   } else {
     showToast(`Resource ${editOrder} not found.`, true);
   }
 } else {
-  // Default first working day to today
   document.getElementById("firstWorkingDay").value = new Date().toISOString().slice(0,10);
   updateLWD();
 }

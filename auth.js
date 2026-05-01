@@ -18,7 +18,7 @@ function injectLoginOverlay() {
     <div class="auth-card">
       <img src="image1.png" class="auth-logo" alt="Great Basin CIMT 7">
       <h2>Great Basin CIMT 7</h2>
-      <p class="auth-sub">Medical Group IMS</p>
+      <p class="auth-sub">Medical Group</p>
       <p class="auth-label">Enter password to continue</p>
       <div class="auth-input-wrap">
         <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password">
