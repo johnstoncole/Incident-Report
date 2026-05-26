@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Resource Roster — Tacoma Creek Fire</title>
-<link rel="stylesheet" href="styles.css?v=3">
+<link rel="stylesheet" href="styles.css?v=4">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -95,6 +95,9 @@
 <div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
 <script src="data.js"></script>
 <script src="firebase-sync.js"></script>
 <script src="auth.js"></script>
@@ -140,12 +143,23 @@ function populateFilters() {
   const agencies = [...new Set(resources.map(r => r.agency).filter(Boolean))].sort();
   const divisions = loadDivisions();
 
-  const agSel = document.getElementById("filter-agency");
+  // Preserve current selections before clearing
+  const agSel  = document.getElementById("filter-agency");
+  const divSel = document.getElementById("filter-div");
+  const agVal  = agSel.value;
+  const divVal = divSel.value;
+
+  // Reset to just the "All" option, then re-add dynamic options
+  agSel.innerHTML  = `<option value="">All Agencies</option>`;
   agencies.forEach(a => agSel.insertAdjacentHTML("beforeend", `<option>${a}</option>`));
 
-  const divSel = document.getElementById("filter-div");
+  divSel.innerHTML = `<option value="">All Divisions</option>`;
   ["(Unassigned)", ...divisions].forEach(d =>
     divSel.insertAdjacentHTML("beforeend", `<option value="${d}">${d}</option>`));
+
+  // Restore selections if they still exist
+  if (agVal)  agSel.value  = agVal;
+  if (divVal) divSel.value = divVal;
 }
 
 function getFiltered() {

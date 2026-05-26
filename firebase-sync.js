@@ -6,17 +6,43 @@ let _db       = null;
 let _listener = null;
 let _pushing  = false; // prevent push→listen→push loops
 
+// ── Live sync badge ──────────────────────────────────────────────
+function _injectBadge() {
+  if (document.getElementById("sync-badge")) return;
+  const nav = document.querySelector("nav");
+  if (!nav) return;
+  const badge = document.createElement("span");
+  badge.id = "sync-badge";
+  badge.className = "sync-badge connecting";
+  badge.innerHTML = `<span class="sync-dot"></span><span id="sync-label">Connecting…</span>`;
+  nav.appendChild(badge);
+}
+
+function _setBadge(state) { // state: 'live' | 'connecting' | 'offline'
+  const badge = document.getElementById("sync-badge");
+  const label = document.getElementById("sync-label");
+  if (!badge || !label) return;
+  badge.className = "sync-badge " + state;
+  label.textContent = state === "live" ? "LIVE" : state === "offline" ? "Offline" : "Connecting…";
+}
+
+// ── Core init ────────────────────────────────────────────────────
 function initFirebaseSync() {
   if (typeof firebase === "undefined") return;
   if (!FIREBASE_CONFIG || !FIREBASE_CONFIG.projectId) return;
   try {
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     _db = firebase.firestore();
-    // Register hook so every data save auto-syncs to Firebase
     window._onDataSaved = pushToFirebase;
     console.log("[Firebase] Connected to", FIREBASE_CONFIG.projectId);
+    _setBadge("connecting");
+
+    // Watch online/offline status
+    window.addEventListener("online",  () => { if (_db) _setBadge("live"); });
+    window.addEventListener("offline", () => _setBadge("offline"));
   } catch (e) {
     console.warn("[Firebase] Init failed:", e);
+    _setBadge("offline");
   }
 }
 
@@ -41,7 +67,8 @@ function pushToFirebase() {
     divisions: loadDivisions(),
     divCoords: loadDivisionCoords(),
   }, { merge: true })
-  .catch(e => console.warn("[Firebase] Push error:", e))
+  .then(() => _setBadge("live"))
+  .catch(e => { console.warn("[Firebase] Push error:", e); _setBadge("offline"); })
   .finally(() => { _pushing = false; });
 }
 
@@ -52,6 +79,10 @@ function startFirebaseListener() {
 
   _listener = _incRef().onSnapshot({ includeMetadataChanges: true }, (doc) => {
     if (!doc.exists) return;
+
+    // Mark badge live on any snapshot (proves we're connected)
+    _setBadge("live");
+
     if (doc.metadata.hasPendingWrites) return; // our own write — skip
 
     const data = doc.data();
@@ -81,6 +112,9 @@ function startFirebaseListener() {
     if (typeof window.onFirebaseUpdate === "function") {
       window.onFirebaseUpdate();
     }
+  }, (err) => {
+    console.warn("[Firebase] Listener error:", err);
+    _setBadge("offline");
   });
 }
 
@@ -90,7 +124,6 @@ async function pullFromFirebase() {
   try {
     const doc = await _incRef().get();
     if (!doc.exists) {
-      // New incident not yet in Firebase — push local data up
       pushToFirebase();
       return;
     }
@@ -106,8 +139,10 @@ async function pullFromFirebase() {
       localStorage.setItem(`cimt7_${id}_settings`, JSON.stringify({
         name: data.name, password: data.password
       }));
+    _setBadge("live");
   } catch (e) {
     console.warn("[Firebase] Pull error:", e);
+    _setBadge("offline");
   }
 }
 
@@ -120,14 +155,15 @@ async function loadIncidentsFromFirebase() {
     snapshot.forEach(doc => {
       remote.push({ id: doc.id, name: doc.data().name, createdAt: doc.data().createdAt });
     });
-    // Merge remote into local list (add any incidents from other devices)
     const local  = loadIncidents();
     const merged = [...local];
     remote.forEach(r => { if (!merged.find(l => l.id === r.id)) merged.push(r); });
     if (merged.length !== local.length) saveIncidents(merged);
+    _setBadge("live");
     return merged;
   } catch (e) {
     console.warn("[Firebase] Load incidents error:", e);
+    _setBadge("offline");
     return loadIncidents();
   }
 }
@@ -140,6 +176,7 @@ async function deleteIncidentFromFirebase(id) {
 
 // ─── Auto-init on page load ──────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
+  _injectBadge();
   initFirebaseSync();
   if (getIncidentId()) {
     await pullFromFirebase();

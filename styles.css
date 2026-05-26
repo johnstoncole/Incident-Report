@@ -132,6 +132,35 @@ nav {
 
 .nav-links a .nav-icon { font-size: .9rem; }
 
+/* Firebase live sync badge */
+.sync-badge {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .5px;
+  padding: .25rem .6rem;
+  border-radius: 20px;
+  margin-left: .5rem;
+  white-space: nowrap;
+  transition: background .3s, color .3s;
+}
+.sync-badge.live   { background: rgba(39,168,74,.15);  color: #27a84a; border: 1px solid rgba(39,168,74,.3); }
+.sync-badge.connecting { background: rgba(122,150,184,.1); color: var(--text-muted); border: 1px solid var(--border); }
+.sync-badge.offline { background: rgba(232,57,42,.12); color: #e8392a; border: 1px solid rgba(232,57,42,.25); }
+.sync-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.sync-badge.live .sync-dot { animation: pulse-dot 2s ease-in-out infinite; }
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .35; }
+}
+
 /* ══════════════════════════════════════════
    PAGE HERO HEADER
    ══════════════════════════════════════════ */
