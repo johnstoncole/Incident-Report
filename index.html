@@ -145,59 +145,59 @@
 <script src="auth.js"></script>
 <script>checkAuth();</script>
 <script>
-(function () {
-  // Set incident name in hero title
-  const incName = getIncidentName();
+function renderDashboard() {
+  const incName   = getIncidentName();
+  const resources = loadResources();
+  const today     = new Date(); today.setHours(0,0,0,0);
+
+  // Hero
   document.getElementById("hero-title").innerHTML = `${incName} <span>Dashboard</span>`;
   document.title = `Dashboard — ${incName}`;
-  const resources = loadResources();
-  const today = new Date(); today.setHours(0,0,0,0);
+  document.getElementById("subtitle").textContent =
+    `As of ${today.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"})} — ${resources.length} resources on roster`;
 
+  // Stat cards
   const counts = { Ambo:0, "Med Mod":0, Rems:0, Medic:0 };
   resources.forEach(r => { if (counts[r.resourceType] !== undefined) counts[r.resourceType]++; });
-
   document.getElementById("count-ambo").textContent   = counts["Ambo"];
   document.getElementById("count-medmod").textContent = counts["Med Mod"];
   document.getElementById("count-rems").textContent   = counts["Rems"];
   document.getElementById("count-medic").textContent  = counts["Medic"];
   document.getElementById("count-total").textContent  = resources.length;
 
-  document.getElementById("subtitle").textContent =
-    `As of ${today.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"})} — ${resources.length} resources on roster`;
-
+  // Expiring
   const expiring = resources.filter(r => { const dl = daysLeft(r); return dl !== null && dl <= 3; })
     .sort((a,b) => daysLeft(a) - daysLeft(b));
+  document.getElementById("count-expiring").textContent    = expiring.length;
+  document.getElementById("alert-count-pill").textContent  = expiring.length;
+  document.getElementById("alert-section").style.display   = expiring.length ? "" : "none";
+  document.getElementById("hero-expiring-meta").innerHTML  = expiring.length
+    ? `<span style="color:var(--danger);font-weight:600">${expiring.length} resource${expiring.length>1?'s':''} expiring soon</span>`
+    : "";
 
-  document.getElementById("count-expiring").textContent = expiring.length;
-  document.getElementById("alert-count-pill").textContent = expiring.length;
+  const alertTbody = document.getElementById("alert-tbody");
+  alertTbody.innerHTML = "";
+  expiring.forEach(r => {
+    const dl  = daysLeft(r);
+    const lwd = lastWorkingDay(r);
+    const badgeClass = dl < 0 ? "expired" : dl <= 1 ? "critical" : "warning";
+    const dlText     = dl < 0 ? `${Math.abs(dl)}d ago` : dl === 0 ? "Today" : `${dl}d`;
+    const ext = (r.availableExtension||"").toUpperCase().startsWith("Y") ? "✓ Yes" : "✗ No";
+    alertTbody.insertAdjacentHTML("beforeend", `
+      <tr>
+        <td><code style="color:var(--text-muted);font-size:.78rem">${r.orderNumber}</code></td>
+        <td><strong>${r.name}</strong></td>
+        <td>${r.agency}</td>
+        <td>${r.resourceIdentification||"—"}</td>
+        <td>${typeBadge(r.resourceType)}</td>
+        <td>${r.division||"—"}</td>
+        <td>${lwd ? fmtDate(lwd) : "—"}</td>
+        <td><span class="days-badge ${badgeClass}">${dlText}</span></td>
+        <td>${ext}</td>
+      </tr>`);
+  });
 
-  if (expiring.length > 0) {
-    document.getElementById("alert-section").style.display = "";
-    document.getElementById("hero-expiring-meta").innerHTML =
-      `<span style="color:var(--danger);font-weight:600">${expiring.length} resource${expiring.length>1?'s':''} expiring soon</span>`;
-    const tbody = document.getElementById("alert-tbody");
-    expiring.forEach(r => {
-      const dl = daysLeft(r);
-      const lwd = lastWorkingDay(r);
-      const badgeClass = dl < 0 ? "expired" : dl === 0 ? "critical" : dl <= 1 ? "critical" : "warning";
-      const dlText = dl < 0 ? `${Math.abs(dl)}d ago` : dl === 0 ? "Today" : `${dl}d`;
-      const ext = (r.availableExtension||"").toUpperCase().startsWith("Y") ? "✓ Yes" : "✗ No";
-      tbody.insertAdjacentHTML("beforeend", `
-        <tr>
-          <td><code style="color:var(--text-muted);font-size:.78rem">${r.orderNumber}</code></td>
-          <td><strong>${r.name}</strong></td>
-          <td>${r.agency}</td>
-          <td>${r.resourceIdentification||"—"}</td>
-          <td>${typeBadge(r.resourceType)}</td>
-          <td>${r.division||"—"}</td>
-          <td>${lwd ? fmtDate(lwd) : "—"}</td>
-          <td><span class="days-badge ${badgeClass}">${dlText}</span></td>
-          <td>${ext}</td>
-        </tr>`);
-    });
-  }
-
-  // Division breakdown cards
+  // Division breakdown
   const divMap = {};
   resources.forEach(r => {
     const d = r.division || "(Unassigned)";
@@ -205,14 +205,14 @@
     divMap[d].total++;
     if (divMap[d][r.resourceType] !== undefined) divMap[d][r.resourceType]++;
   });
-
   const divGrid = document.getElementById("div-cards");
+  divGrid.innerHTML = "";
   Object.entries(divMap).sort(([a],[b])=>a.localeCompare(b)).forEach(([div, cnts]) => {
     const pills = [
-      cnts["Ambo"]    ? `<span style="color:#e87722;font-weight:600">${cnts["Ambo"]} Ambo</span>` : "",
+      cnts["Ambo"]    ? `<span style="color:#e87722;font-weight:600">${cnts["Ambo"]} Ambo</span>`       : "",
       cnts["Med Mod"] ? `<span style="color:#4a9fda;font-weight:600">${cnts["Med Mod"]} Med Mod</span>` : "",
-      cnts["Rems"]    ? `<span style="color:#27a84a;font-weight:600">${cnts["Rems"]} Rems</span>` : "",
-      cnts["Medic"]   ? `<span style="color:#b060d4;font-weight:600">${cnts["Medic"]} Medic</span>` : "",
+      cnts["Rems"]    ? `<span style="color:#27a84a;font-weight:600">${cnts["Rems"]} Rems</span>`       : "",
+      cnts["Medic"]   ? `<span style="color:#b060d4;font-weight:600">${cnts["Medic"]} Medic</span>`     : "",
     ].filter(Boolean).join(" · ");
     divGrid.insertAdjacentHTML("beforeend", `
       <div class="stat-card total" style="--card-accent:var(--border-lt);--card-glow:transparent">
@@ -222,15 +222,16 @@
       </div>`);
   });
 
-  // Roster overview table
-  const tbody = document.getElementById("roster-tbody");
+  // Full roster table
+  const rosterTbody = document.getElementById("roster-tbody");
+  rosterTbody.innerHTML = "";
   [...resources].sort((a,b)=>a.name.localeCompare(b.name)).forEach(r => {
-    const dl = daysLeft(r);
+    const dl  = daysLeft(r);
     const lwd = lastWorkingDay(r);
     const badgeClass = dl===null?"ok":dl<0?"expired":dl<=1?"critical":dl<=3?"warning":"ok";
-    const dlText = dl===null?"—":dl<0?`${Math.abs(dl)}d ago`:dl===0?"Today":`${dl}d`;
+    const dlText     = dl===null?"—":dl<0?`${Math.abs(dl)}d ago`:dl===0?"Today":`${dl}d`;
     const ext = (r.availableExtension||"").toUpperCase().startsWith("Y") ? "✓" : "✗";
-    tbody.insertAdjacentHTML("beforeend", `
+    rosterTbody.insertAdjacentHTML("beforeend", `
       <tr>
         <td><code style="color:var(--text-muted);font-size:.78rem">${r.orderNumber}</code></td>
         <td><strong>${r.name}</strong></td>
@@ -243,9 +244,10 @@
         <td style="text-align:center">${ext}</td>
       </tr>`);
   });
-})();
+}
 
-window.onFirebaseUpdate = () => location.reload();
+renderDashboard();
+window.onFirebaseUpdate = renderDashboard;
 </script>
 </body>
 </html>
