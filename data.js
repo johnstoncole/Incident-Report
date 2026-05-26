@@ -38,6 +38,8 @@ function deleteIncident(id) {
   toRemove.forEach(k => localStorage.removeItem(k));
   saveIncidents(loadIncidents().filter(inc => inc.id !== id));
   if (getIncidentId() === id) localStorage.removeItem(CURRENT_INC_KEY);
+  // Also remove from Firestore if available
+  if (typeof deleteIncidentFromFirebase === "function") deleteIncidentFromFirebase(id);
 }
 
 function loadIncidentSettings() {
