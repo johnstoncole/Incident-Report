@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Incidents — CIMT7 Medical Group</title>
+<link rel="stylesheet" href="styles.css?v=3">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CIMT7 IMS">
+<meta name="theme-color" content="#0d1b2a">
+<style>
+  .fires-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1.25rem; margin-top:1.5rem; }
+
+  .fire-card {
+    background:var(--card-bg); border:1px solid var(--border);
+    border-radius:var(--radius-lg); padding:1.4rem 1.5rem;
+    display:flex; flex-direction:column; gap:.5rem;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .fire-card:hover { border-color:var(--orange); box-shadow:0 0 0 3px rgba(232,119,34,.1); }
+  .fire-card-name  { font-size:1.15rem; font-weight:700; color:var(--text); }
+  .fire-card-meta  { font-size:.78rem; color:var(--text-muted); }
+  .fire-card-stats { display:flex; gap:.75rem; margin-top:.25rem; flex-wrap:wrap; }
+  .fire-card-stat  { font-size:.78rem; background:var(--input-bg); border-radius:4px; padding:.2rem .6rem; color:var(--text-muted); }
+  .fire-card-actions { display:flex; gap:.5rem; margin-top:.75rem; }
+
+  .create-box {
+    background:var(--card-bg); border:2px dashed var(--border);
+    border-radius:var(--radius-lg); padding:1.75rem;
+    display:flex; flex-direction:column; gap:.75rem; align-items:flex-start;
+    margin-bottom:2rem;
+  }
+  .create-box h3 { font-size:1rem; color:var(--text); margin:0; }
+  .create-row { display:flex; gap:.65rem; width:100%; flex-wrap:wrap; }
+  .create-row input { flex:1; min-width:200px; }
+
+  .empty-fires { text-align:center; padding:4rem 2rem; color:var(--text-muted); }
+  .empty-fires .icon { font-size:3rem; margin-bottom:1rem; }
+</style>
+</head>
+<body>
+
+<nav>
+  <img src="image1.png" class="nav-logo" alt="Great Basin CIMT 7">
+  <a class="nav-brand" href="fires.html">
+    Great Basin CIMT 7
+    <span class="brand-sub">Medical Group</span>
+  </a>
+</nav>
+
+<div class="page-hero">
+  <h1>Select <span>Incident</span></h1>
+  <p>Create a new incident or continue working on an existing one.</p>
+</div>
+
+<main>
+
+  <div class="create-box">
+    <h3>Start a New Incident</h3>
+    <div class="create-row">
+      <input type="text" id="new-inc-name" placeholder="Incident name (e.g. Tacoma Creek Fire)" maxlength="80">
+      <button class="btn btn-primary" onclick="createAndEnter()">+ Create Incident</button>
+    </div>
+  </div>
+
+  <div class="section-label">Your Incidents</div>
+  <div class="fires-grid" id="fires-grid"></div>
+  <div class="empty-fires" id="empty-fires" style="display:none">
+    <div class="icon">🔥</div>
+    <p>No incidents yet. Create one above to get started.</p>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+function renderFires() {
+  const incidents = loadIncidents();
+  const grid = document.getElementById("fires-grid");
+  const empty = document.getElementById("empty-fires");
+  grid.innerHTML = "";
+  empty.style.display = incidents.length ? "none" : "";
+
+  incidents.slice().reverse().forEach(inc => {
+    // Count resources for this incident
+    const resources  = JSON.parse(localStorage.getItem(`cimt7_${inc.id}_resources`) || "[]");
+    const divisions  = JSON.parse(localStorage.getItem(`cimt7_${inc.id}_divisions`)  || "[]");
+    const expiring   = resources.filter(r => { const dl = daysLeft(r); return dl !== null && dl <= 3 && dl >= 0; }).length;
+    const created    = new Date(inc.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+    const isCurrent  = inc.id === localStorage.getItem(CURRENT_INC_KEY);
+
+    grid.insertAdjacentHTML("beforeend", `
+      <div class="fire-card" style="${isCurrent ? "border-color:var(--orange);box-shadow:0 0 0 3px rgba(232,119,34,.12)" : ""}">
+        <div class="fire-card-name">${inc.name} ${isCurrent ? '<span style="color:var(--orange);font-size:.7rem;font-weight:600;vertical-align:middle">● ACTIVE</span>' : ""}</div>
+        <div class="fire-card-meta">Created ${created}</div>
+        <div class="fire-card-stats">
+          <span class="fire-card-stat">${resources.length} resources</span>
+          <span class="fire-card-stat">${divisions.length} divisions</span>
+          ${expiring ? `<span class="fire-card-stat" style="color:#e55;background:rgba(200,0,0,.1)">${expiring} expiring</span>` : ""}
+        </div>
+        <div class="fire-card-actions">
+          <button class="btn btn-primary btn-sm" onclick="enterIncident('${inc.id}')">Enter</button>
+          <button class="btn btn-danger btn-sm" onclick="removeIncident('${inc.id}', '${inc.name.replace(/'/g,"\\'")}')">Delete</button>
+        </div>
+      </div>`);
+  });
+}
+
+function createAndEnter() {
+  const name = document.getElementById("new-inc-name").value.trim();
+  if (!name) { showToast("Enter an incident name first.", true); return; }
+  const id = createIncident(name);
+  enterIncident(id);
+}
+
+function enterIncident(id) {
+  localStorage.setItem(CURRENT_INC_KEY, id);
+  // Clear session auth so password is re-prompted for this incident
+  sessionStorage.removeItem("cimt7_authenticated");
+  location.href = "index.html";
+}
+
+function removeIncident(id, name) {
+  if (!confirm(`Delete "${name}" and all its data? This cannot be undone.`)) return;
+  deleteIncident(id);
+  showToast(`"${name}" deleted.`, true);
+  renderFires();
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "show" + (isError ? " error" : "");
+  setTimeout(() => t.className = "", 3000);
+}
+
+// Allow Enter key in name field
+document.getElementById("new-inc-name").addEventListener("keydown", e => {
+  if (e.key === "Enter") createAndEnter();
+});
+
+renderFires();
+</script>
+</body>
+</html>

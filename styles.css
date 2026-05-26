@@ -1071,3 +1071,71 @@ table.data-table tbody tr:hover { background: var(--navy-hover); }
 @media (max-width: 768px) {
   .upload-grid { grid-template-columns: 1fr; }
 }
+
+/* ─── Incident name in nav brand ─────────────────────── */
+.brand-incident {
+  display: block;
+  font-size: .65rem;
+  color: var(--orange);
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+/* ─── Auth overlay extras ────────────────────────────── */
+.auth-incident-label {
+  font-size: .82rem;
+  color: var(--orange);
+  font-weight: 600;
+  margin: .25rem 0 .5rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.auth-switch-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: .8rem;
+  cursor: pointer;
+  margin-top: .75rem;
+  text-decoration: underline;
+}
+.auth-switch-btn:hover { color: var(--orange); }
+
+/* ─── Print styles ───────────────────────────────────── */
+@media print {
+  nav, .controls, .action-cell, .btn, #toast,
+  .div-manager, .date-range-controls, .legend,
+  .page-hero .hero-meta, .section-header a { display: none !important; }
+
+  body { background: #fff !important; color: #000 !important; font-size: 10pt; }
+  main { padding: 0 !important; max-width: 100% !important; }
+
+  .page-hero {
+    background: none !important;
+    padding: 12pt 0 8pt !important;
+    border-bottom: 2pt solid #e87722;
+    margin-bottom: 12pt;
+  }
+  .page-hero h1 { color: #000 !important; font-size: 18pt; }
+  .page-hero h1 span { color: #e87722 !important; }
+  .page-hero p { color: #555 !important; }
+
+  .data-table { font-size: 8pt; border-collapse: collapse; width: 100%; }
+  .data-table th { background: #f0f0f0 !important; color: #000 !important;
+    border: 1px solid #ccc; padding: 4pt 6pt; text-align: left; }
+  .data-table td { border: 1px solid #ddd; padding: 3pt 6pt; color: #000 !important; }
+  .data-table tr:nth-child(even) td { background: #fafafa !important; }
+
+  .badge { border: 1px solid currentColor !important; font-size: 7pt !important; }
+  .days-badge { border: 1px solid currentColor !important; }
+
+  .tracking-table { font-size: 7pt; }
+  .tracking-table th, .tracking-table td { border: 1px solid #ccc; padding: 2pt 3pt; color: #000 !important; }
+  .cell-fwd { background: #1a6fba !important; color: #fff !important; }
+  .cell-lwd { background: #c00 !important; color: #fff !important; }
+
+  .table-wrap { overflow: visible !important; }
+  .tracking-wrap { overflow: visible !important; }
+}

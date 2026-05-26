@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings — CIMT7 Medical Group</title>
+<link rel="stylesheet" href="styles.css?v=3">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CIMT7 IMS">
+<meta name="theme-color" content="#0d1b2a">
+<style>
+  .settings-section {
+    background:var(--card-bg); border:1px solid var(--border);
+    border-radius:var(--radius-lg); padding:1.75rem; margin-bottom:1.5rem;
+  }
+  .settings-section h2 { font-size:1rem; color:var(--text); margin:0 0 1.25rem; padding-bottom:.75rem; border-bottom:1px solid var(--border); }
+  .settings-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1rem; }
+  .danger-zone { border-color:#c00 !important; }
+  .danger-zone h2 { color:#e55; border-color:rgba(200,0,0,.25) !important; }
+  .danger-text { font-size:.85rem; color:var(--text-muted); margin-bottom:1rem; }
+</style>
+</head>
+<body>
+
+<nav>
+  <img src="image1.png" class="nav-logo" alt="Great Basin CIMT 7">
+  <a class="nav-brand" href="index.html">
+    Great Basin CIMT 7
+    <span class="brand-sub">Medical Group</span>
+    <span class="brand-incident" id="nav-incident"></span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html">Dashboard</a>
+    <a href="roster.html">Roster</a>
+    <a href="tracking.html">Tracking Chart</a>
+    <a href="map.html">Map</a>
+    <a href="add-resource.html">Add Resource</a>
+    <a href="settings.html" class="active">Settings</a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <h1>Incident <span>Settings</span></h1>
+  <p id="settings-sub">Configure this incident.</p>
+</div>
+
+<main>
+
+  <!-- Incident Info -->
+  <div class="settings-section">
+    <h2>Incident Information</h2>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label>Incident Name</label>
+        <input type="text" id="inc-name" placeholder="e.g. Tacoma Creek Fire" maxlength="80">
+      </div>
+    </div>
+    <div style="margin-top:1rem">
+      <button class="btn btn-primary" onclick="saveName()">Save Name</button>
+    </div>
+  </div>
+
+  <!-- Password -->
+  <div class="settings-section">
+    <h2>Change Password</h2>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label>Current Password</label>
+        <input type="password" id="pwd-current" placeholder="Current password">
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="pwd-new" placeholder="New password">
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="pwd-confirm" placeholder="Confirm new password">
+      </div>
+    </div>
+    <div style="margin-top:1rem">
+      <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+    </div>
+  </div>
+
+  <!-- Switch Incident -->
+  <div class="settings-section">
+    <h2>Switch Incident</h2>
+    <p class="danger-text">Go back to the incident selection screen to work on a different fire.</p>
+    <a href="fires.html" class="btn btn-secondary">← Back to Incidents</a>
+  </div>
+
+  <!-- Danger Zone -->
+  <div class="settings-section danger-zone">
+    <h2>Danger Zone</h2>
+    <p class="danger-text">Permanently delete this incident and all its resources, divisions, and files. This cannot be undone.</p>
+    <button class="btn btn-danger" onclick="deleteThisIncident()">Delete This Incident</button>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script src="data.js"></script>
+<script src="auth.js"></script>
+<script>checkAuth();</script>
+<script>
+function init() {
+  const s = loadIncidentSettings();
+  document.getElementById("inc-name").value = s.name || "";
+  document.getElementById("settings-sub").textContent = `Incident: ${s.name || ""}`;
+}
+
+function saveName() {
+  const name = document.getElementById("inc-name").value.trim();
+  if (!name) { showToast("Name cannot be empty.", true); return; }
+  const s = loadIncidentSettings();
+  s.name = name;
+  saveIncidentSettings(s);
+  document.getElementById("nav-incident").textContent = name;
+  document.getElementById("settings-sub").textContent = `Incident: ${name}`;
+  showToast("Incident name updated.");
+}
+
+function changePassword() {
+  const current = document.getElementById("pwd-current").value;
+  const newPwd  = document.getElementById("pwd-new").value;
+  const confirm = document.getElementById("pwd-confirm").value;
+  const s = loadIncidentSettings();
+
+  if (current !== (s.password || "CIMT7")) { showToast("Current password is incorrect.", true); return; }
+  if (!newPwd)                              { showToast("New password cannot be empty.", true); return; }
+  if (newPwd !== confirm)                   { showToast("New passwords do not match.", true); return; }
+
+  s.password = newPwd;
+  saveIncidentSettings(s);
+  // Clear session so next page load prompts for new password
+  sessionStorage.removeItem("cimt7_authenticated");
+  document.getElementById("pwd-current").value = "";
+  document.getElementById("pwd-new").value     = "";
+  document.getElementById("pwd-confirm").value  = "";
+  showToast("Password updated. You will need to log in again next session.");
+}
+
+function deleteThisIncident() {
+  const s = loadIncidentSettings();
+  if (!confirm(`Delete "${s.name}" and ALL its data? This is permanent.`)) return;
+  const id = getIncidentId();
+  deleteIncident(id);
+  sessionStorage.removeItem("cimt7_authenticated");
+  location.href = "fires.html";
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "show" + (isError ? " error" : "");
+  setTimeout(() => t.className = "", 3500);
+}
+
+init();
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@
   "name": "Great Basin CIMT 7 — Medical Group",
   "short_name": "CIMT7 IMS",
   "description": "Medical Group incident management system",
-  "start_url": "/Incident-Report/index.html",
+  "start_url": "/Incident-Report/fires.html",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#0d1b2a",

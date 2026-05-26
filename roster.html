@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Resource Roster — Tacoma Creek Fire</title>
-<link rel="stylesheet" href="styles.css?v=2">
+<link rel="stylesheet" href="styles.css?v=3">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -19,12 +19,15 @@
   <a class="nav-brand" href="index.html">
     Great Basin CIMT 7
     <span class="brand-sub">Medical Group</span>
+    <span class="brand-incident" id="nav-incident"></span>
   </a>
   <div class="nav-links">
     <a href="index.html">Dashboard</a>
     <a href="roster.html" class="active">Roster</a>
     <a href="tracking.html">Tracking Chart</a>
+    <a href="map.html">Map</a>
     <a href="add-resource.html">Add Resource</a>
+    <a href="settings.html">Settings</a>
   </div>
 </nav>
 
@@ -56,6 +59,8 @@
       <option value="no">Extension: No</option>
     </select>
     <a href="add-resource.html" class="btn btn-primary" style="margin-left:auto">+ Add Resource</a>
+    <button class="btn btn-secondary" onclick="exportExcel()">Export Excel</button>
+    <button class="btn btn-secondary" onclick="window.print()">Print / PDF</button>
   </div>
 
   <div class="table-wrap">
@@ -89,11 +94,45 @@
 
 <div id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="data.js"></script>
 <script src="auth.js"></script>
 <script>checkAuth();</script>
-<script src="data.js"></script>
 <script>
 let editingOrder = null;
+
+// Set incident name
+document.addEventListener("DOMContentLoaded", () => {
+  const n = getIncidentName();
+  document.title = `Roster — ${n}`;
+  document.querySelector(".page-hero p").textContent = n;
+});
+
+function exportExcel() {
+  const resources = getFiltered();
+  const rows = resources.map(r => ({
+    "Order #":        r.orderNumber,
+    "Name":           r.name,
+    "Phone":          r.phone,
+    "Email":          r.email,
+    "Type":           r.resourceType,
+    "Resource ID":    r.resourceIdentification,
+    "Agency":         r.agency,
+    "Division":       r.division || "(Unassigned)",
+    "First Working Day": r.firstWorkingDay,
+    "Last Working Day":  lastWorkingDay(r) ? fmtDate(lastWorkingDay(r)) : "—",
+    "Days Left":      daysLeft(r) ?? "—",
+    "Extension":      (r.availableExtension||"").toUpperCase().startsWith("Y") ? "Yes" : "No",
+    "Supervisor":     r.supervisorName,
+    "Sup. Phone":     r.supervisorPhone,
+    "Sup. Email":     r.supervisorEmail,
+    "Vehicle":        r.vehicleInfo,
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Roster");
+  XLSX.writeFile(wb, `${getIncidentName().replace(/\s+/g,"_")}_Roster.xlsx`);
+}
 
 function populateFilters() {
   const resources = loadResources();

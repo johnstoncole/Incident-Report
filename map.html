@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Division Map — CIMT7 Medical Group</title>
+<link rel="stylesheet" href="styles.css?v=3">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CIMT7 IMS">
+<meta name="theme-color" content="#0d1b2a">
+<style>
+  #map { height:480px; border-radius:var(--radius-lg); border:1px solid var(--border); margin-bottom:1.5rem; }
+  .map-hint { font-size:.82rem; color:var(--text-muted); margin-bottom:.75rem; }
+
+  .div-loc-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+  .div-loc-table th { text-align:left; padding:.5rem .75rem; border-bottom:1px solid var(--border); color:var(--text-muted); font-weight:600; font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; }
+  .div-loc-table td { padding:.5rem .75rem; border-bottom:1px solid var(--border-lt); vertical-align:middle; }
+  .div-loc-table tr:last-child td { border-bottom:none; }
+  .coord-inputs { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+  .coord-inputs input { width:110px; }
+  .coord-status { font-size:.75rem; margin-left:.25rem; }
+  .coord-status.set { color:var(--green, #2a9d4e); }
+  .coord-status.unset { color:var(--text-muted); }
+
+  .search-row { display:flex; gap:.65rem; margin-bottom:1rem; flex-wrap:wrap; }
+  .search-row input { flex:1; min-width:200px; }
+
+  /* Leaflet popup dark theme */
+  .leaflet-popup-content-wrapper { background:var(--card-bg); color:var(--text); border:1px solid var(--border); }
+  .leaflet-popup-tip { background:var(--card-bg); }
+  .popup-div-name { font-weight:700; font-size:.95rem; margin-bottom:.4rem; color:var(--orange); }
+  .popup-resources { font-size:.8rem; line-height:1.6; }
+</style>
+</head>
+<body>
+
+<nav>
+  <img src="image1.png" class="nav-logo" alt="Great Basin CIMT 7">
+  <a class="nav-brand" href="index.html">
+    Great Basin CIMT 7
+    <span class="brand-sub">Medical Group</span>
+    <span class="brand-incident" id="nav-incident"></span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html">Dashboard</a>
+    <a href="roster.html">Roster</a>
+    <a href="tracking.html">Tracking Chart</a>
+    <a href="map.html" class="active">Map</a>
+    <a href="add-resource.html">Add Resource</a>
+    <a href="settings.html">Settings</a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <h1>Division <span>Map</span></h1>
+  <p>Pin each division on the map. Click the map to place or move a selected division.</p>
+</div>
+
+<main>
+
+  <!-- Search box -->
+  <div class="search-row">
+    <input type="text" id="geocode-input" placeholder="Search a location (e.g. Lassen National Forest, CA)…">
+    <button class="btn btn-secondary" onclick="geocodeSearch()">Go to Location</button>
+  </div>
+
+  <p class="map-hint">Select a division below, then click the map to drop its pin. Pins are saved automatically.</p>
+
+  <div id="map"></div>
+
+  <!-- Division table -->
+  <div class="section-label">Division Locations</div>
+  <div class="table-wrap">
+    <table class="div-loc-table">
+      <thead>
+        <tr>
+          <th>Division</th>
+          <th>Resources</th>
+          <th>Coordinates (lat, lng)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="div-tbody"></tbody>
+    </table>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="data.js"></script>
+<script src="auth.js"></script>
+<script>checkAuth();</script>
+<script>
+let map, markers = {}, selectedDiv = null;
+
+function initMap() {
+  map = L.map("map").setView([38.5, -119.5], 7);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 18,
+  }).addTo(map);
+
+  map.on("click", function(e) {
+    if (!selectedDiv) { showToast("Select a division row first, then click the map.", true); return; }
+    setDivCoord(selectedDiv, e.latlng.lat, e.latlng.lng);
+  });
+
+  loadAllMarkers();
+}
+
+function makeIcon(color) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+    popupAnchor: [0, -10],
+  });
+}
+
+function buildPopup(divName) {
+  const resources = loadResources().filter(r => (r.division || "(Unassigned)") === divName);
+  const counts = { Ambo: 0, "Med Mod": 0, Rems: 0, Medic: 0 };
+  resources.forEach(r => { if (counts[r.resourceType] !== undefined) counts[r.resourceType]++; });
+  const lines = Object.entries(counts).filter(([,v])=>v>0).map(([k,v])=>`<span style="color:${typeColor(k)}">${v} ${k}</span>`).join(" · ") || "No resources";
+  return `<div class="popup-div-name">Division: ${divName}</div>
+          <div class="popup-resources">${resources.length} total · ${lines}</div>
+          <div class="popup-resources" style="margin-top:.3rem">${resources.map(r=>`<div>${r.name}</div>`).join("")}</div>`;
+}
+
+function loadAllMarkers() {
+  const coords = loadDivisionCoords();
+  const divs = loadDivisions();
+  divs.forEach(d => {
+    if (coords[d]) placeMarker(d, coords[d].lat, coords[d].lng);
+  });
+}
+
+function placeMarker(divName, lat, lng) {
+  if (markers[divName]) map.removeLayer(markers[divName]);
+  const color = typeColor("Ambo"); // use orange for division pins
+  const marker = L.marker([lat, lng], { icon: makeIcon("#e87722"), draggable: true }).addTo(map);
+  marker.bindPopup(buildPopup(divName));
+  marker.on("dragend", function(e) {
+    const pos = e.target.getLatLng();
+    setDivCoord(divName, pos.lat, pos.lng);
+  });
+  markers[divName] = marker;
+}
+
+function setDivCoord(divName, lat, lng) {
+  const coords = loadDivisionCoords();
+  coords[divName] = { lat: +lat.toFixed(5), lng: +lng.toFixed(5) };
+  saveDivisionCoords(coords);
+  placeMarker(divName, lat, lng);
+  renderTable();
+  showToast(`${divName} pinned.`);
+}
+
+function renderTable() {
+  const divisions = loadDivisions();
+  const coords    = loadDivisionCoords();
+  const resources = loadResources();
+  const tbody     = document.getElementById("div-tbody");
+  tbody.innerHTML = "";
+
+  if (divisions.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="color:var(--text-muted);font-style:italic;padding:1rem">No divisions yet. Add them on the Tracking Chart page.</td></tr>`;
+    return;
+  }
+
+  divisions.forEach(d => {
+    const count = resources.filter(r => r.division === d).length;
+    const c     = coords[d];
+    const isSelected = d === selectedDiv;
+    tbody.insertAdjacentHTML("beforeend", `
+      <tr style="${isSelected ? "background:rgba(232,119,34,.08)" : ""}" onclick="selectDiv('${d}')" style="cursor:pointer">
+        <td><strong style="color:${isSelected?"var(--orange)":"var(--text)"}">${d}</strong></td>
+        <td style="color:var(--text-muted)">${count}</td>
+        <td>
+          <div class="coord-inputs">
+            <input type="number" id="lat-${d}" value="${c ? c.lat : ""}" placeholder="Lat" step="0.00001" onchange="coordInputChange('${d}')">
+            <input type="number" id="lng-${d}" value="${c ? c.lng : ""}" placeholder="Lng" step="0.00001" onchange="coordInputChange('${d}')">
+            <span class="coord-status ${c?"set":"unset"}">${c ? "Pinned" : "Not set"}</span>
+          </div>
+        </td>
+        <td>
+          ${c ? `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();flyTo('${d}')">View</button>` : ""}
+          ${c ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();clearCoord('${d}')">Clear</button>` : ""}
+        </td>
+      </tr>`);
+  });
+}
+
+function selectDiv(name) {
+  selectedDiv = name;
+  renderTable();
+  showToast(`Click the map to pin "${name}"`);
+}
+
+function coordInputChange(divName) {
+  const lat = parseFloat(document.getElementById(`lat-${divName}`).value);
+  const lng = parseFloat(document.getElementById(`lng-${divName}`).value);
+  if (!isNaN(lat) && !isNaN(lng)) setDivCoord(divName, lat, lng);
+}
+
+function flyTo(divName) {
+  const coords = loadDivisionCoords();
+  if (coords[divName]) {
+    map.flyTo([coords[divName].lat, coords[divName].lng], 12);
+    markers[divName]?.openPopup();
+  }
+}
+
+function clearCoord(divName) {
+  const coords = loadDivisionCoords();
+  delete coords[divName];
+  saveDivisionCoords(coords);
+  if (markers[divName]) { map.removeLayer(markers[divName]); delete markers[divName]; }
+  renderTable();
+  showToast(`${divName} pin cleared.`);
+}
+
+async function geocodeSearch() {
+  const q = document.getElementById("geocode-input").value.trim();
+  if (!q) return;
+  showToast("Searching…");
+  try {
+    const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`);
+    const data = await resp.json();
+    if (!data.length) { showToast("Location not found.", true); return; }
+    map.flyTo([+data[0].lat, +data[0].lon], 10);
+  } catch {
+    showToast("Search failed.", true);
+  }
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "show" + (isError ? " error" : "");
+  setTimeout(() => t.className = "", 3000);
+}
+
+initMap();
+renderTable();
+</script>
+</body>
+</html>
