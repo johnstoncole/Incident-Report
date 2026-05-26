@@ -138,6 +138,7 @@
 <div id="toast"></div>
 
 <script src="data.js"></script>
+<script src="firebase-sync.js"></script>
 <script src="auth.js"></script>
 <script>checkAuth();</script>
 <script>
@@ -240,6 +241,8 @@
       </tr>`);
   });
 })();
+
+window.onFirebaseUpdate = () => location.reload();
 </script>
 </body>
 </html>

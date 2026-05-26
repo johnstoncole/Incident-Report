@@ -53,6 +53,7 @@ function saveIncidentSettings(settings) {
   const list = loadIncidents();
   const idx  = list.findIndex(i => i.id === id);
   if (idx !== -1) { list[idx].name = settings.name; saveIncidents(list); }
+  window._onDataSaved && window._onDataSaved();
 }
 
 function getIncidentName() {
@@ -93,6 +94,7 @@ function loadResources() {
 
 function saveResources(list) {
   localStorage.setItem(ns("resources"), JSON.stringify(list));
+  window._onDataSaved && window._onDataSaved();
 }
 
 // ─── Divisions ──────────────────────────────────────────────────
@@ -103,6 +105,7 @@ function loadDivisions() {
 
 function saveDivisions(list) {
   localStorage.setItem(ns("divisions"), JSON.stringify(list));
+  window._onDataSaved && window._onDataSaved();
 }
 
 function loadDivisionCoords() {
@@ -111,6 +114,7 @@ function loadDivisionCoords() {
 
 function saveDivisionCoords(coords) {
   localStorage.setItem(ns("divCoords"), JSON.stringify(coords));
+  window._onDataSaved && window._onDataSaved();
 }
 
 // ─── Utilities ──────────────────────────────────────────────────

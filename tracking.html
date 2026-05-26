@@ -114,6 +114,7 @@
 <div id="toast"></div>
 
 <script src="data.js"></script>
+<script src="firebase-sync.js"></script>
 <script src="auth.js"></script>
 <script>checkAuth();</script>
 <script>
@@ -325,6 +326,8 @@ function showToast(msg, isError = false) {
 // Init
 renderDivPills();
 resetDates();
+
+window.onFirebaseUpdate = () => { renderDivPills(); renderChart(); };
 </script>
 </body>
 </html>

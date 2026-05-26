@@ -78,6 +78,7 @@
 <div id="toast"></div>
 
 <script src="data.js"></script>
+<script src="firebase-sync.js"></script>
 <script>
 function renderFires() {
   const incidents = loadIncidents();
@@ -144,7 +145,14 @@ document.getElementById("new-inc-name").addEventListener("keydown", e => {
   if (e.key === "Enter") createAndEnter();
 });
 
-renderFires();
+// Load from Firebase then render
+(async () => {
+  await new Promise(r => setTimeout(r, 800)); // let firebase-sync init
+  if (typeof loadIncidentsFromFirebase === "function") {
+    await loadIncidentsFromFirebase();
+  }
+  renderFires();
+})();
 </script>
 </body>
 </html>

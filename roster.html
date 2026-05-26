@@ -96,6 +96,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="data.js"></script>
+<script src="firebase-sync.js"></script>
 <script src="auth.js"></script>
 <script>checkAuth();</script>
 <script>
@@ -305,6 +306,8 @@ function showToast(msg, isError = false) {
 
 populateFilters();
 render();
+
+window.onFirebaseUpdate = () => { populateFilters(); render(); };
 
 // Highlight from URL param
 const params = new URLSearchParams(location.search);

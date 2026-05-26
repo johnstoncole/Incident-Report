@@ -94,6 +94,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="data.js"></script>
+<script src="firebase-sync.js"></script>
 <script src="auth.js"></script>
 <script>checkAuth();</script>
 <script>
@@ -250,6 +251,8 @@ function showToast(msg, isError = false) {
 
 initMap();
 renderTable();
+
+window.onFirebaseUpdate = () => { renderTable(); loadAllMarkers(); };
 </script>
 </body>
 </html>
