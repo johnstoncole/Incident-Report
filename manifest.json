@@ -1,0 +1,22 @@
+{
+  "name": "Great Basin CIMT 7 — Medical Group",
+  "short_name": "CIMT7 IMS",
+  "description": "Medical Group incident management system",
+  "start_url": "/Incident-Report/index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0d1b2a",
+  "background_color": "#0d1b2a",
+  "icons": [
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
