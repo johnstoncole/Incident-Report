@@ -120,9 +120,9 @@ function createAndEnter() {
 
 function enterIncident(id) {
   localStorage.setItem(CURRENT_INC_KEY, id);
-  // Clear session auth so password is re-prompted for this incident
+  // Clear session auth so password is re-prompted when accessing protected pages
   sessionStorage.removeItem("cimt7_authenticated");
-  location.href = "index.html";
+  location.href = "add-resource.html";
 }
 
 function removeIncident(id, name) {
